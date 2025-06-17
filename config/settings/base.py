@@ -9,19 +9,28 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-from decouple import config
+from decouple import config, Config, RepositoryEnv
 from pathlib import Path
+import dj_database_url
+
 
 # Path to the 'config' directory (where base.py resides)
-CONFIG_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = CONFIG_DIR.parent
-BASE_DIR = PROJECT_ROOT /'django_root'
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+CONFIG_DIR = BASE_DIR / 'config'
+PROJECT_DIR = BASE_DIR / 'project'
+
+config = Config(RepositoryEnv(str(CONFIG_DIR / '.env')))
+
+DATABASES = {
+    'default': dj_database_url.parse(config('DATABASE_URL'))
+}
+
+SECRET_KEY = config('SECRET_KEY')
+
+SITE_ID = config('SITE_ID', cast=int)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY')
 
 ALLOWED_HOSTS = []
 
@@ -35,9 +44,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    # custom apps
+    'apps.activities',
 ]
 
 MIDDLEWARE = [
+    'allauth.account.middleware.AccountMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -52,7 +69,7 @@ ROOT_URLCONF = 'ums.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS':  [BASE_DIR / 'templates'],
+        'DIRS':  [PROJECT_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -65,6 +82,24 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'ums.wsgi.application'
+
+#django-allauth settings
+LOGIN_REDIRECT_URL = '/'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+ACCOUNT_EMAIL_VERIFICATION = 'none' # For simplicity in MVP, disable email verification
+ACCOUNT_LOGIN_METHODS = {'email'} # Allow login via email or username
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+SOCIALACCOUNT_LOGIN_ON_GET = True
+SOCIALACCOUNT_QUERY_EMAIL = True
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': config('GOOGLE_CLIENT_ID'),
+            'secret': config('GOOGLE_CLIENT_SECRET'),
+            'key': ''
+        }
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -84,6 +119,13 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTHENTICATION_BACKENDS = [
+    # Needed to login by username in Django admin, regardless of `allauth`
+    'django.contrib.auth.backends.ModelBackend',
+
+    # `allauth` specific authentication methods, such as login by email
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -102,8 +144,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-STATIC_ROOT = PROJECT_ROOT / 'static'
-MEDIA_ROOT = PROJECT_ROOT / 'media'
+STATIC_ROOT = PROJECT_DIR / 'static'
+MEDIA_ROOT = PROJECT_DIR / 'media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

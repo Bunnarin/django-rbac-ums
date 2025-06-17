@@ -3,13 +3,14 @@
 import os
 import sys
 from pathlib import Path
+from decouple import config, Config, RepositoryEnv
 
 def main():
     """Run administrative tasks."""
-    current_dir = Path(__file__).resolve().parent
-    django_root_dir = current_dir / 'django_root'
-    sys.path.insert(0, str(django_root_dir))
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.local')
+    BASE_DIR = Path(__file__).resolve().parent
+    CONFIG_DIR = BASE_DIR / 'config'
+    config = Config(RepositoryEnv(str(CONFIG_DIR / '.env')))
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', config('DJANGO_SETTINGS_MODULE', default='config.settings.local'))
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
