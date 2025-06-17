@@ -1,0 +1,53 @@
+from django.views.generic import ListView, View
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.mixins import PermissionRequiredMixin
+from .models import ActivityTemplate, Activity
+from .forms import generate_dynamic_form_class
+# Create your views here.
+class ActivityListView(PermissionRequiredMixin, ListView):
+    model = Activity
+    template_name = 'activities/activity_list.html'
+    permission_required = 'activities.view_activity'
+
+    def get_queryset(self):
+        return Activity.objects.filter(author=self.request.user).order_by('-created_at')
+
+class ActivityTemplateListView(PermissionRequiredMixin, ListView):
+    permission_required = 'activities.add_activity'
+    model = ActivityTemplate
+    template_name = 'activities/activity_template_list.html'
+
+
+class ActivityCreateView(PermissionRequiredMixin, View):
+    template_name = 'activities/activity_create.html'
+    permission_required = 'activities.add_activity'
+    def get(self, request, template_pk):
+        # get the json
+        activity_template = get_object_or_404(ActivityTemplate, pk=template_pk)
+        template_json = activity_template.template_json
+        Form = generate_dynamic_form_class(template_json)
+        form = Form()
+        # The title is now attached to the form class itself
+        return render(request, self.template_name, {'form': form, 'form_title': activity_template.name})
+
+    def post(self, request, template_pk):
+        activity_template = get_object_or_404(ActivityTemplate, pk=template_pk)
+        template_json = activity_template.template_json
+        Form = generate_dynamic_form_class(template_json)
+        form = Form(request.POST)
+
+        if form.is_valid():
+            Activity.objects.create(
+                template=activity_template,
+                author=request.user,
+                response_json=form.cleaned_data,
+            )
+            return redirect('activities:list')
+        else:
+            # If form is not valid, render it again with errors
+            context = {
+                'form': form,
+                'schema_title': Form.form_title,
+                'activity_template': activity_template,
+            }
+            return render(request, self.template_name, context)

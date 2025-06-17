@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+    <a href="{% url 'activities:create' %}" class="btn btn-primary">Create New Activity</a>
+    <ul>
+        {% for activity in object_list %}
+            <li>
+                {{ activity.template }},{{ activity.author }}, {{ activity.created_at }}
+            </li>
+        {% empty %}
+            <li>No activities found.</li>
+        {% endfor %}
+    </ul>
+
+{% endblock %}

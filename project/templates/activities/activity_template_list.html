@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+    <p>Choose the activity types</p>
+    <ul>
+        {% for template in object_list %}
+            <li>
+                <a href="{{ template.get_absolute_url }}">{{ template.name }}</a>
+            </li>
+        {% empty %}
+            <li>No activity templates available.</li>
+        {% endfor %}
+    </ul>
+
+{% endblock %}
