@@ -9,7 +9,9 @@ def main():
     """Run administrative tasks."""
     BASE_DIR = Path(__file__).resolve().parent
     CONFIG_DIR = BASE_DIR / 'config'
+    PROJECT_DIR = BASE_DIR / 'project'
     config = Config(RepositoryEnv(str(CONFIG_DIR / '.env')))
+    sys.path.insert(0, str(PROJECT_DIR))
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', config('DJANGO_SETTINGS_MODULE', default='config.settings.local'))
     try:
         from django.core.management import execute_from_command_line
