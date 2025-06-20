@@ -10,7 +10,7 @@ class ActivityListView(PermissionRequiredMixin, ListView):
     permission_required = 'activities.view_activity'
 
     def get_queryset(self):
-        return Activity.objects.filter(author=self.request.user).order_by('-created_at')
+        return self.model.secure_objects.for_user(self.request.user) # type: ignore
 
 class ActivityTemplateListView(PermissionRequiredMixin, ListView):
     permission_required = 'activities.add_activity'
@@ -21,6 +21,7 @@ class ActivityTemplateListView(PermissionRequiredMixin, ListView):
 class ActivityCreateView(PermissionRequiredMixin, View):
     template_name = 'activities/activity_create.html'
     permission_required = 'activities.add_activity'
+
     def get(self, request, template_pk):
         # get the json
         activity_template = get_object_or_404(ActivityTemplate, pk=template_pk)
@@ -37,10 +38,13 @@ class ActivityCreateView(PermissionRequiredMixin, View):
         form = Form(request.POST)
 
         if form.is_valid():
+            # inject the author, faculty, and program into the form data
             Activity.objects.create(
-                template=activity_template,
-                author=request.user,
-                response_json=form.cleaned_data,
+                template = activity_template,
+                author = request.user,
+                faculty = request.user.profile.faculty,
+                program = request.user.profile.program,
+                response_json = form.cleaned_data,
             )
             return redirect('activities:list')
         else:

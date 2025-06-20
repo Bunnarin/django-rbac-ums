@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     # custom apps
+    'apps.core',
     'apps.activities',
     'apps.organization',
     'apps.user_profile',
@@ -88,10 +89,9 @@ WSGI_APPLICATION = 'ums.wsgi.application'
 #django-allauth settings
 LOGIN_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
-ACCOUNT_EMAIL_VERIFICATION = 'none' # For simplicity in MVP, disable email verification
-ACCOUNT_LOGIN_METHODS = {'email'} # Allow login via email or username
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_LOGIN_ON_GET = True
+SOCIALACCOUNT_ONLY = True
 SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_PROVIDERS = {
     'google': {

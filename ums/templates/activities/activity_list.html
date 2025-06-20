@@ -4,7 +4,7 @@
     <ul>
         {% for activity in object_list %}
             <li>
-                {{ activity.template }},{{ activity.author }}, {{ activity.created_at }}
+                {{ activity.author }}, {{ activity.faculty }}, {{ activity.program }}
             </li>
         {% empty %}
             <li>No activities found.</li>

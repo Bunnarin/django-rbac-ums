@@ -1,9 +1,9 @@
 from django.contrib import admin
-from .models import UserProfile
+from .models import Profile
 
 # Register your models here.
-@admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'faculty', 'program',)
     list_filter = ('faculty', 'program',)
     search_fields = ('user__username',)

@@ -1,6 +1,9 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.db.models import Q
 from django.urls import reverse
+from apps.core.managers import RLSManager
+from apps.core.mixins import TimestampMixin, AuthorMixin, UserRLSMixin
+from apps.organization.mixins import OrganizationMixin
 
 # Create your models here.
 class ActivityTemplate(models.Model):
@@ -12,10 +15,15 @@ class ActivityTemplate(models.Model):
 
     def __str__(self): return self.name
 
-class Activity(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
+class Activity(TimestampMixin, AuthorMixin, OrganizationMixin, UserRLSMixin, models.Model):
     template = models.ForeignKey(ActivityTemplate, null=True, on_delete=models.SET_NULL, related_name='activities')
-    author = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='activities')
     response_json = models.JSONField()
+
+    objects = models.Manager()
+
+    secure_objects = RLSManager()
+
+    def get_user_rls_filter(self, user):
+        return Q(author=user)
 
     def __str__(self): return f"{self.template}"

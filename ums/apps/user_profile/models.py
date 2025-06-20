@@ -1,12 +1,17 @@
 from django.db import models
 from django.contrib.auth.models import User
-from apps.organization.models import Faculty, Program
+from apps.organization.mixins import OrganizationMixin
 
 # Create your models here.
-class UserProfile(models.Model):
+class Profile(OrganizationMixin, models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    faculty = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True)
-    program = models.ForeignKey(Program, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return self.user.username
+
+    class Meta:
+        permissions = [
+            ("access_program_wide", "program-wide access"),
+            ("access_faculty_wide", "faculty-wide access"),
+            ("access_global", "university-wide access"),
+        ]
