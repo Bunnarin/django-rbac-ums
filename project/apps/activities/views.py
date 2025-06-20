@@ -44,10 +44,4 @@ class ActivityCreateView(PermissionRequiredMixin, View):
             )
             return redirect('activities:list')
         else:
-            # If form is not valid, render it again with errors
-            context = {
-                'form': form,
-                'schema_title': Form.form_title,
-                'activity_template': activity_template,
-            }
-            return render(request, self.template_name, context)
+            return render(request, self.template_name, {'form': form, 'form_title': activity_template.name})

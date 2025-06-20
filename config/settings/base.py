@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     # custom apps
     'apps.activities',
+    'apps.organization',
+    'apps.user_profile',
 ]
 
 MIDDLEWARE = [
