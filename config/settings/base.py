@@ -13,17 +13,17 @@ from decouple import config, Config, RepositoryEnv
 from pathlib import Path
 import dj_database_url
 
-
-# Path to the 'config' directory (where base.py resides)
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 CONFIG_DIR = BASE_DIR / 'config'
-PROJECT_DIR = BASE_DIR / 'project'
+PROJECT_DIR = BASE_DIR / 'ums'
 
 config = Config(RepositoryEnv(str(CONFIG_DIR / '.env')))
 
 DATABASES = {
     'default': dj_database_url.parse(config('DATABASE_URL'))
 }
+
+DEBUG = False
 
 SECRET_KEY = config('SECRET_KEY')
 
@@ -139,9 +139,6 @@ TIME_ZONE = 'Asia/Phnom_Penh'
 USE_I18N = True
 
 USE_TZ = True
-
-USE_L10N = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/

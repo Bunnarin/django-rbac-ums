@@ -9,7 +9,7 @@ def main():
     """Run administrative tasks."""
     BASE_DIR = Path(__file__).resolve().parent
     CONFIG_DIR = BASE_DIR / 'config'
-    PROJECT_DIR = BASE_DIR / 'project'
+    PROJECT_DIR = BASE_DIR / 'ums'
     config = Config(RepositoryEnv(str(CONFIG_DIR / '.env')))
     sys.path.insert(0, str(PROJECT_DIR))
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', config('DJANGO_SETTINGS_MODULE', default='config.settings.local'))
