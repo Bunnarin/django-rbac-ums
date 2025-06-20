@@ -82,10 +82,9 @@ def generate_dynamic_form_class(question_definitions, form_name="DynamicForm"):
                 help_text=field_description,
                 required=is_required,
                 choices=choices_list,
-                widget=CheckboxSelectMultiple, # Renders as checkboxes
-                initial=initial_value
+                widget=CheckboxSelectMultiple,
+                initial=initial_value,
             )
-        # Note: 'boolean' type removed as per request
 
         if form_field:
             form_fields[field_name] = form_field

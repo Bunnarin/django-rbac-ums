@@ -17,7 +17,7 @@ class OrganizationMixin(models.Model):
     )
     program = models.ForeignKey(
         Program,
-        on_delete=models.SET_NULL, # Or models.CASCADE
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         verbose_name="Program Affiliation",

@@ -1,14 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
-    <p>Choose the activity types</p>
-    <ul>
+    <h4 class="my-3">Choose the activity types</h4>
+
+    <div class="list-group">
         {% for template in object_list %}
-            <li>
-                <a href="{{ template.get_absolute_url }}">{{ template.name }}</a>
-            </li>
-        {% empty %}
-            <li>No activity templates available.</li>
+            <a href="{{ template.get_absolute_url }}" class="list-group-item list-group-item-action">
+                {{ template.name }}
+            </a>
         {% endfor %}
-    </ul>
+    </div>
 
 {% endblock %}

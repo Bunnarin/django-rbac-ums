@@ -8,6 +8,7 @@ class ActivityListView(PermissionRequiredMixin, ListView):
     model = Activity
     template_name = 'activities/activity_list.html'
     permission_required = 'activities.view_activity'
+    ordering = ['-created_at']
 
     def get_queryset(self):
         return self.model.secure_objects.for_user(self.request.user) # type: ignore
@@ -48,4 +49,4 @@ class ActivityCreateView(PermissionRequiredMixin, View):
             )
             return redirect('activities:list')
         else:
-            return render(request, self.template_name, {'form': form, 'form_title': activity_template.name})
+            return render(request, self.template_name, {'form': form})

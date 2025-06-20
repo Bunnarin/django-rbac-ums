@@ -49,6 +49,9 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+    # extensions
+    'widget_tweaks',
+    'apps.auth_extensions',
     # custom apps
     'apps.core',
     'apps.activities',
