@@ -4,7 +4,7 @@ from .views import ActivityTemplateListView, ActivityListView, ActivityCreateVie
 app_name = 'activities'
 
 urlpatterns = [
-    path('', ActivityListView.as_view(), name='list'),
+    path('', ActivityListView.as_view(), name='activity-list'),
     path('create', ActivityTemplateListView.as_view(), name='create'),
     path('submit/<int:template_pk>', ActivityCreateView.as_view(), name='submit'),
 ]

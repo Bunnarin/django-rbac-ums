@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-
+    <ul>
+        {% for model_info in accessible_models %}
+            <li><a href="{{ model_info.url }}">{{ model_info.name }}</a></li>
+        {% endfor %}
+    </ul>
 {% endblock %}

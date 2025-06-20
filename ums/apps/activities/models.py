@@ -11,7 +11,7 @@ class ActivityTemplate(models.Model):
     template_json = models.JSONField()
 
     def get_absolute_url(self): # this redirect to create a activity with a pk of the template
-        return reverse('activities:submit', args=[self.pk])
+        return reverse('activities:activitytemplate:submit', args=[self.pk])
 
     def __str__(self): return self.name
 
@@ -22,6 +22,9 @@ class Activity(TimestampMixin, AuthorMixin, OrganizationMixin, UserRLSMixin, mod
     objects = models.Manager()
 
     secure_objects = RLSManager()
+
+    class Meta:
+        verbose_name_plural = "Activities"
 
     def get_user_rls_filter(self, user):
         return Q(author=user)
