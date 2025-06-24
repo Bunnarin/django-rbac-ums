@@ -45,9 +45,8 @@ class UserRLSMixin(models.Model):
         you need to override this sht to author, professor, student...
         sht must be used with the RLSManager
         """
-        # Default implementation: Assumes an 'author' field
-        if hasattr(self, 'author') and self.author == user:
-            return Q(author=user)
+        # example override
+        # return Q(author=user)
         raise NotImplementedError(
             f"Model {self.__class__.__name__} inheriting UserSpecificRLSMixin "
             "must implement get_user_rls_filter method."

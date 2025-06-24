@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <ul>
+    <div class="list-group">
         {% for model_info in accessible_models %}
-            <li><a href="{{ model_info.url }}">{{ model_info.name }}</a></li>
+            <a href="{{ model_info.url }}" class="list-group-item list-group-item-action">{{ model_info.name }}</a>
         {% endfor %}
-    </ul>
+    </div>
 {% endblock %}

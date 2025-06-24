@@ -1,10 +1,11 @@
 from django.urls import path
-from .views import ActivityTemplateListView, ActivityListView, ActivityCreateView
+from . import views
 
 app_name = 'activities'
 
 urlpatterns = [
-    path('', ActivityListView.as_view(), name='activity-list'),
-    path('create', ActivityTemplateListView.as_view(), name='create'),
-    path('submit/<int:template_pk>', ActivityCreateView.as_view(), name='submit'),
+    path('', views.ActivityListView.as_view(), name='activity-list'),
+    path('create/templates/', views.ActivityTemplateSelectView.as_view(), name='activitytemplate-select'),
+    path('create/<int:template_pk>/', views.ActivityCreateView.as_view(), name='activity-create'),
+    path('export/', views.ActivityExportView.as_view(), name='activity-export'),
 ]

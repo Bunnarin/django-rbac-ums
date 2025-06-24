@@ -1,35 +1,41 @@
-# auth_extensions/admin.py (or your_app_name/admin.py)
-
+# apps/auth_extensions/admin.py
 from django.contrib import admin
-from django.contrib.auth.models import Group, Permission # Import Group and Permission models
-from django.db.models import Q # Needed for combining querysets if you want to be super explicit (though | works fine)
+from django.contrib.auth.models import Group, Permission
 
-admin.site.unregister(Group)
+# Unregister the default GroupAdmin if it's already registered
+try:
+    admin.site.unregister(Group)
+except admin.sites.NotRegistered:
+    pass
 
 @admin.register(Group)
 class CustomGroupAdmin(admin.ModelAdmin):
-    # Copy the original attributes from Django's GroupAdmin for consistent behavior
     search_fields = ("name",)
     ordering = ("name",)
-    filter_horizontal = ("permissions",) # This keeps the nice dual-pane selector
+    filter_horizontal = ("permissions",)
 
     def formfield_for_manytomany(self, db_field, request=None, **kwargs):
-        """
-        Overrides the default method to restrict permissions based on the requesting user.
-        """
         if db_field.name == "permissions":
-            # Original Django logic for performance
-            qs = kwargs.get("queryset", db_field.remote_field.model.objects)
-            kwargs["queryset"] = qs.select_related("content_type")
-
-            # === YOUR CUSTOM LOGIC STARTS HERE ===
             if request and not request.user.is_superuser:
-                user_permissions_queryset = Permission.objects.none()
-                user_permissions_queryset |= request.user.user_permissions.all()
-                user_permissions_queryset |= Permission.objects.filter(
+                # Get permissions the current user has directly assigned
+                user_perms_direct = request.user.user_permissions.all()
+
+                # Get permissions from all groups the current user belongs to
+                user_perms_via_groups = Permission.objects.filter(
                     group__in=request.user.groups.all()
                 )
-                allowed_permissions = user_permissions_queryset.distinct()
-                kwargs["queryset"] = allowed_permissions.select_related("content_type")
+
+                # Combine and get distinct permissions
+                # Use |= for Q objects or | for querysets (set union)
+                allowed_permissions_qs = (user_perms_direct | user_perms_via_groups).distinct()
+
+                # Set the queryset for the 'permissions' field
+                # Apply select_related for performance on the final queryset
+                kwargs["queryset"] = allowed_permissions_qs.select_related("content_type")
+            else:
+                # If it's a superuser, or no request (e.g., during tests), or field is not 'permissions'
+                # ensure default behavior or full queryset is used.
+                # It's also good to include the select_related for superusers too for consistency/perf.
+                kwargs["queryset"] = Permission.objects.all().select_related("content_type")
 
         return super().formfield_for_manytomany(db_field, request=request, **kwargs)

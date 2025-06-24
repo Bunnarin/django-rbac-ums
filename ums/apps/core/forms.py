@@ -1,4 +1,3 @@
-from pathlib import Path
 from django import forms
 from django.forms.widgets import Textarea, CheckboxSelectMultiple
 
@@ -29,26 +28,30 @@ def generate_dynamic_form_class(question_definitions, form_name="DynamicForm"):
         # Get common field properties
         field_type = field_def.get('type')
         field_title = field_def.get('title', field_name.replace('_', ' ').title())
-        field_description = field_def.get('description', '') # Optional description
-        is_required = field_def.get('is_required', False) # New key for required
+        field_description = field_def.get('description', '') # Optional
+        is_required = field_def.get('is_required', False)
         initial_value = field_def.get('default')
 
         form_field = None
 
-        if field_type == 'str':
-            widget = None
-            if field_def.get('widget') == 'textarea':
-                widget = Textarea
-
+        if field_type == 'text':
+            form_field = forms.CharField(
+                label=field_title,
+                help_text=field_description,
+                required=is_required,
+                max_length=field_def.get('maxLength'),
+                initial=initial_value
+            )
+        elif field_type == 'paragraph':
             form_field = forms.CharField(
                 label=field_title,
                 help_text=field_description,
                 required=is_required,
                 max_length=field_def.get('maxLength'),
                 initial=initial_value,
-                widget=widget
+                widget=Textarea
             )
-        elif field_type == 'int':
+        elif field_type == 'integer':
             form_field = forms.IntegerField(
                 label=field_title,
                 help_text=field_description,
@@ -57,7 +60,7 @@ def generate_dynamic_form_class(question_definitions, form_name="DynamicForm"):
                 max_value=field_def.get('max'), # Using 'max' as per new schema
                 initial=initial_value
             )
-        elif field_type == 'float':
+        elif field_type == 'decimal':
             form_field = forms.FloatField(
                 label=field_title,
                 help_text=field_description,
@@ -79,10 +82,9 @@ def generate_dynamic_form_class(question_definitions, form_name="DynamicForm"):
             choices_list = [(item, item) for item in field_def.get('choices', [])]
             form_field = forms.MultipleChoiceField(
                 label=field_title,
-                help_text=field_description,
                 required=is_required,
                 choices=choices_list,
-                widget=CheckboxSelectMultiple,
+                widget=CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
                 initial=initial_value,
             )
 
@@ -91,15 +93,9 @@ def generate_dynamic_form_class(question_definitions, form_name="DynamicForm"):
         else:
             print(f"Warning: Field '{field_name}' with type '{field_type}' not supported or malformed. Skipping.")
 
-    # Create the dynamic form class using type()
-    # The form_name can be passed as an argument or derived from context
     DynamicForm = type(
         form_name,
         (forms.Form,),
         form_fields
     )
-
-    # We removed the form_title attribute since the top-level schema object is gone.
-    # The view will now provide the form title (e.g., from activity_template.name).
-
     return DynamicForm
