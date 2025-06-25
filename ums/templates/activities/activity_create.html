@@ -12,9 +12,6 @@
             <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
             {% if field.field.widget.input_type == 'checkbox' %}
                 {{ field }}
-                {% for choice in field.field.choices %}
-                    <br><br>
-                {% endfor %}
             {% else %}
                 {% render_field field class="form-control" %}
             {% endif %}

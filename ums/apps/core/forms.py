@@ -1,5 +1,4 @@
 from django import forms
-from django.forms.widgets import Textarea, CheckboxSelectMultiple
 
 def generate_dynamic_form_class(question_definitions, form_name="DynamicForm"):
     """
@@ -9,93 +8,77 @@ def generate_dynamic_form_class(question_definitions, form_name="DynamicForm"):
     form_fields = {}
 
     for i, field_def in enumerate(question_definitions):
-        # Generate a unique field name if not provided (e.g., from title)
-        # Using a simple index-based name if title is repetitive or missing
-        field_name = field_def.get('name', f'question_{i + 1}')
-
-        # Sanitize name if derived from title (remove spaces, special chars)
-        if 'title' in field_def and not 'name' in field_def:
-            # Create a slug-like name from the title for consistency
-            field_name_from_title = field_def['title'].lower().replace(' ', '_').replace('-', '_')
-            field_name = ''.join(c for c in field_name_from_title if c.isalnum() or c == '_')
-            # Ensure uniqueness if multiple questions have similar titles
-            counter = 0
-            original_field_name = field_name
-            while field_name in form_fields:
-                counter += 1
-                field_name = f"{original_field_name}_{counter}"
-
-        # Get common field properties
+        field_name = field_def.get('name', f'field_{i}')
         field_type = field_def.get('type')
-        field_title = field_def.get('title', field_name.replace('_', ' ').title())
-        field_description = field_def.get('description', '') # Optional
+        field_title = field_def.get('title')
         is_required = field_def.get('is_required', False)
-        initial_value = field_def.get('default')
 
         form_field = None
 
         if field_type == 'text':
             form_field = forms.CharField(
                 label=field_title,
-                help_text=field_description,
                 required=is_required,
                 max_length=field_def.get('maxLength'),
-                initial=initial_value
             )
         elif field_type == 'paragraph':
             form_field = forms.CharField(
                 label=field_title,
-                help_text=field_description,
                 required=is_required,
                 max_length=field_def.get('maxLength'),
-                initial=initial_value,
-                widget=Textarea
+                widget=forms.Textarea,
             )
         elif field_type == 'integer':
+            min_val = field_def.get('min')
+            max_val = field_def.get('max')
+
             form_field = forms.IntegerField(
                 label=field_title,
-                help_text=field_description,
                 required=is_required,
-                min_value=field_def.get('min'), # Using 'min' as per new schema
-                max_value=field_def.get('max'), # Using 'max' as per new schema
-                initial=initial_value
+                min_value=min_val,
+                max_value=max_val,
             )
         elif field_type == 'decimal':
+            min_val = field_def.get('min')
+            max_val = field_def.get('max')
+
             form_field = forms.FloatField(
                 label=field_title,
-                help_text=field_description,
                 required=is_required,
-                min_value=field_def.get('min'),
-                max_value=field_def.get('max'),
-                initial=initial_value
+                min_value=min_val,
+                max_value=max_val,
             )
-        elif field_type == 'enum': # Single choice dropdown
+
+        elif field_type == 'dropdown':
             choices_list = [(item, item) for item in field_def.get('choices', [])]
             form_field = forms.ChoiceField(
                 label=field_title,
-                help_text=field_description,
                 required=is_required,
                 choices=choices_list,
-                initial=initial_value
             )
-        elif field_type == 'enumList': # Multiple choice checkboxes/multi-select
+
+        elif field_type == 'checkbox': # Multiple choice using SelectMultiple (multi-select dropdown)
             choices_list = [(item, item) for item in field_def.get('choices', [])]
             form_field = forms.MultipleChoiceField(
                 label=field_title,
                 required=is_required,
                 choices=choices_list,
-                widget=CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
-                initial=initial_value,
+                widget=forms.CheckboxSelectMultiple(),
+            )
+
+        elif field_type == 'date':
+            form_field = forms.DateField(
+                label=field_title,
+                required=is_required,
+                widget=forms.DateInput(attrs={'type': 'date'}), # Renders as an HTML5 date picker
             )
 
         if form_field:
             form_fields[field_name] = form_field
-        else:
-            print(f"Warning: Field '{field_name}' with type '{field_type}' not supported or malformed. Skipping.")
 
     DynamicForm = type(
         form_name,
         (forms.Form,),
-        form_fields
+        form_fields,
     )
     return DynamicForm
