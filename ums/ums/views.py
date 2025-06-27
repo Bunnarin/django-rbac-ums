@@ -33,7 +33,7 @@ def home_view(request):
             verbose_name_plural = model_class._meta.verbose_name_plural or f"{model_name}s"
             verbose_name_plural = verbose_name_plural.title()
 
-            list_url_name = f'{app_label}:{model_name}_list'
+            list_url_name = f'{app_label}:view_{model_name}'
 
             has_access = False
             crud_perms = [

@@ -10,7 +10,6 @@ class RLSQuerySet(models.QuerySet):
     """
 
     def for_user(self, user):
-
         if not user.is_authenticated:
             return self.none() # Anonymous users see nothing by default
 
@@ -18,32 +17,27 @@ class RLSQuerySet(models.QuerySet):
             return self # Superuser bypasses all RLS
 
         # --- Permission-based RLS Checks (Highest Priority) ---
-        # These are exclusive checks; if one returns, we're done.
-
         # 1. Global Access Check
-        if user.has_perm('user.access_global'):
+        if user.has_perm('users.access_global'):
             return self # User with global access sees all
 
         # 2. Faculty-Wide Access Check
-        if user.has_perm('user.access_faculty_wide'):
+        if user.has_perm('users.access_faculty_wide'):
             if user.faculty:
                 return self.filter(faculty=user.faculty)
             else:
                 return self.none() # Perm but no assigned faculty
 
         # 3. Program-Wide Access Check
-        if user.has_perm('user.access_program_wide'):
+        if user.has_perm('users.access_program_wide'):
             if user.program:
-                # User sees all activities within their assigned program
-                # (assuming a direct program field on the model)
                 return self.filter(program=user.program)
             else:
-                return self.none() # Perm but no assigned program
+                return self.none()
 
         # --- Default User-Specific RLS (Lowest Priority) ---
         elif issubclass(self.model, UserRLSMixin):
-            pass
-            # return self.filter(self.model().get_user_rls_filter(user))
+            return self.filter(self.model().get_user_rls_filter(user))
 
         else:
             return self.none() # Default to no access
