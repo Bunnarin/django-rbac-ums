@@ -26,7 +26,7 @@ def export_queryset_to_xlsx(queryset, fields_to_export, filename="data_export.xl
     Exports a Django QuerySet to a single XLSX sheet.
 
     Args:
-        queryset (QuerySet): The Django QuerySet (e.g., Activity.secure_objects.all()).
+        queryset (QuerySet): The Django QuerySet (e.g., Activity.objects.all()).
         fields_to_export (list): A list of tuples, where each tuple is
                                   (model_attribute_path_string, "Excel Column Header").
                                   'model_attribute_path_string' can be a direct field name

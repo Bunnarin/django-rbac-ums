@@ -38,6 +38,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'apps.users',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -47,16 +48,13 @@ INSTALLED_APPS = [
     # allauth
     'allauth',
     'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.google',
     # extensions
     'widget_tweaks',
-    'apps.auth_extensions',
+    'apps.admin_extensions',
     # custom apps
     'apps.core',
     'apps.activities',
     'apps.organization',
-    'apps.user_profile',
 ]
 
 MIDDLEWARE = [
@@ -93,22 +91,14 @@ WSGI_APPLICATION = 'ums.wsgi.application'
 LOGIN_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 ACCOUNT_EMAIL_VERIFICATION = 'none'
-SOCIALACCOUNT_LOGIN_ON_GET = True
-SOCIALACCOUNT_ONLY = True
-SOCIALACCOUNT_QUERY_EMAIL = True
-SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'APP': {
-            'client_id': config('GOOGLE_CLIENT_ID'),
-            'secret': config('GOOGLE_CLIENT_SECRET'),
-            'key': ''
-        }
-    }
-}
 
+# For phone authentication (requires more setup)
+ACCOUNT_LOGIN_METHODS = ["email", "phone"]
+ACCOUNT_PHONE_VERIFICATION_ENABLED = True
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
+AUTH_USER_MODEL = 'users.CustomUser'
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',

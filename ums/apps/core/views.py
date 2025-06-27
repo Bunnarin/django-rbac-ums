@@ -2,7 +2,6 @@ import openpyxl
 from io import BytesIO
 from django.http import HttpResponse
 from django.views.generic import View
-import json
 from datetime import datetime, date
 
 class BaseExportView(View):
@@ -16,7 +15,7 @@ class BaseExportView(View):
         # ... (existing get_queryset method) ...
         if self.model is None:
             raise NotImplementedError("Subclasses must define 'model'.")
-        return self.model.secure_objects.for_user(self.request.user)
+        return self.model.objects.for_user(self.request.user)
 
     def _get_nested_attr(self, obj, attr_path):
         # ... (existing _get_nested_attr method) ...
@@ -48,7 +47,7 @@ class BaseExportView(View):
         queryset = self.get_queryset()
 
         workbook = openpyxl.Workbook()
-        
+
         # --- Main Data Sheet ---
         main_sheet_name = self.sheet_name[:31].replace('/', '_').replace('\\', '_').replace('?', '_').replace('*', '_').replace('[', '_').replace(']', '_').replace(':', '_')
         main_sheet = workbook.active
@@ -80,11 +79,11 @@ class BaseExportView(View):
             for field_path in json_context_fields_paths:
                 value = self._get_nested_attr(obj, field_path)
                 obj_json_context_values.append(self._format_value_for_excel(value))
-            
+
             # Now, process all fields for the main sheet and extract JSON data for separate sheets
             for field_path, _ in self.fields_to_export:
                 value = self._get_nested_attr(obj, field_path)
-                
+
                 # Always add the raw (formatted) value to the main sheet
                 main_row_data.append(self._format_value_for_excel(value))
 
@@ -92,12 +91,12 @@ class BaseExportView(View):
                 if field_path in self.json_fields_to_extract:
                     if isinstance(value, dict) and value: # Only process non-empty dicts
                         schema_keys = tuple(sorted(value.keys()))
-                        
+
                         if schema_keys not in json_schema_sheets_data:
                             json_schema_counter += 1
                             sheet_title = f"{field_path.replace('_', ' ').title()} Data {json_schema_counter}"
                             valid_sheet_title = sheet_title[:31].replace('/', '_').replace('\\', '_').replace('?', '_').replace('*', '_').replace('[', '_').replace(']', '_').replace(':', '_')
-                            
+
                             # Combine context headers with dynamic JSON keys
                             combined_headers = json_context_headers + list(schema_keys)
 
@@ -106,13 +105,13 @@ class BaseExportView(View):
                                 'headers': combined_headers, # Store combined headers
                                 'rows': []
                             }
-                        
+
                         # Prepare row for the JSON-specific sheet: context values + formatted JSON values
                         json_dynamic_values = [self._format_value_for_excel(value.get(key, '')) for key in schema_keys]
                         combined_json_row_data = obj_json_context_values + json_dynamic_values
 
                         json_schema_sheets_data[schema_keys]['rows'].append(combined_json_row_data)
-            
+
             main_sheet.append(main_row_data)
 
         # --- Create and Populate JSON-specific Sheets ---

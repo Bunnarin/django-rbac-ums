@@ -2,8 +2,8 @@
 
 {% block content %}
     <div class="list-group">
-        {% for model_info in accessible_models %}
-            <a href="{{ model_info.url }}" class="list-group-item list-group-item-action">{{ model_info.name }}</a>
+        {% for model in accessible_models %}
+            <a href="{{ model.url }}" class="list-group-item list-group-item-action">{{ model.name }}</a>
         {% endfor %}
     </div>
 {% endblock %}

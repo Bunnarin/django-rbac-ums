@@ -6,19 +6,12 @@ from django.db.models import Model
 def home_view(request):
     accessible_models = []
 
-    # Define apps to explicitly exclude from dynamic linking
-    # These are typically internal Django apps or utility apps
     excluded_app_labels = [
         'admin',       # Django Admin
         'auth',        # Django Authentication (User, Group, Permission models)
         'contenttypes',# Django ContentTypes
         'sessions',    # Django Sessions
         'staticfiles', # Django StaticFiles
-        # Add any other third-party apps you don't want to link to, e.g.:
-        'rest_framework', # If you use DRF but don't have browsable list views for all models
-        'guardian',    # If you use django-guardian
-        'core',        # Your current core app (avoid self-linking)
-        # ... add any other app labels you want to exclude
     ]
 
     # Iterate through all installed apps
@@ -40,7 +33,7 @@ def home_view(request):
             verbose_name_plural = model_class._meta.verbose_name_plural or f"{model_name}s"
             verbose_name_plural = verbose_name_plural.title()
 
-            list_url_name = f'{app_label}:{model_name}-list'
+            list_url_name = f'{app_label}:{model_name}_list'
 
             has_access = False
             crud_perms = [
@@ -63,8 +56,6 @@ def home_view(request):
                         'url': model_url,
                     })
                 except NoReverseMatch:
-                    # Log that this specific URL was not found for a model the user has access to
-                    print(f"DEBUG: NoReverseMatch: User has permission for {app_label}.{model_name}, but no URL found for '{list_url_name}'")
                     pass # Continue to the next model
 
     context = {

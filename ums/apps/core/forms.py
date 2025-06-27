@@ -1,29 +1,20 @@
 from django import forms
 
-def generate_dynamic_form_class(question_definitions, form_name="DynamicForm"):
+def generate_dynamic_form_class(json_template, form_name="DynamicForm"):
     """
     Generates a Django Form class based on a list of question dictionaries.
     Each dictionary defines a form field.
     """
     form_fields = {}
 
-    for i, field_def in enumerate(question_definitions):
+    for i, field_def in enumerate(json_template):
         field_type = field_def.get('type')
         fieldKwargs = {
             'label': field_def.get('label'),
-            'required': field_def.get('is_required'),
+            'required': field_def.get('required'),
         }
 
-        max_length = field_def.get('max_length', None)
-        min_value = field_def.get('min_value', None)
-        max_value = field_def.get('max_value', None)
-        choices = [(item, item) for item in field_def.get('choices', [])]
-
-        if max_length:
-            fieldKwargs['max_length'] = max_length
-        if min_value:
-            fieldKwargs['min_value'] = min_value
-            fieldKwargs['max_value'] = max_value
+        choices = [(item, item) for item in field_def.get('choices', None)]
         if choices:
             fieldKwargs['choices'] = choices
 
@@ -38,7 +29,7 @@ def generate_dynamic_form_class(question_definitions, form_name="DynamicForm"):
             case 'date': form_field = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}), **fieldKwargs)
 
         if form_field:
-            form_fields[i] = form_field
+            form_fields[f"field_{i}"] = form_field
 
     DynamicForm = type(
         form_name,

@@ -1,8 +1,5 @@
 from django.db import models
-from django.db.models import Q
-from django.conf import settings # To get the AUTH_USER_MODEL
-from apps.user_profile.models import Profile
-from apps.core.mixins import UserRLSMixin
+from apps.core.mixins.models import UserRLSMixin
 
 class RLSQuerySet(models.QuerySet):
     """
@@ -11,11 +8,6 @@ class RLSQuerySet(models.QuerySet):
     Models using this QuerySet are expected to have 'faculty' and 'program'
     ForeignKeys or to override how they relate to Faculty/Program in RLS.
     """
-    def _get_user_profile(self, user):
-        try:
-            return user.profile
-        except Profile.DoesNotExist:
-            return None
 
     def for_user(self, user):
 
@@ -25,30 +17,26 @@ class RLSQuerySet(models.QuerySet):
         if user.is_superuser:
             return self # Superuser bypasses all RLS
 
-        user_profile = self._get_user_profile(user)
-        if not user_profile:
-            return self.none() # User has no profile, no data access
-
         # --- Permission-based RLS Checks (Highest Priority) ---
         # These are exclusive checks; if one returns, we're done.
 
         # 1. Global Access Check
-        if user.has_perm('user_profile.access_global'):
+        if user.has_perm('user.access_global'):
             return self # User with global access sees all
 
         # 2. Faculty-Wide Access Check
-        if user.has_perm('user_profile.access_faculty_wide'):
-            if user_profile.faculty:
-                return self.filter(faculty=user_profile.faculty)
+        if user.has_perm('user.access_faculty_wide'):
+            if user.faculty:
+                return self.filter(faculty=user.faculty)
             else:
                 return self.none() # Perm but no assigned faculty
 
         # 3. Program-Wide Access Check
-        if user.has_perm('user_profile.access_program_wide'):
-            if user_profile.program:
+        if user.has_perm('user.access_program_wide'):
+            if user.program:
                 # User sees all activities within their assigned program
                 # (assuming a direct program field on the model)
-                return self.filter(program=user_profile.program)
+                return self.filter(program=user.program)
             else:
                 return self.none() # Perm but no assigned program
 
@@ -64,8 +52,6 @@ class RLSManager(models.Manager):
     """
     A manager that uses RLSQuerySet to provide RLS-filtered query results.
     """
-    def get_queryset(self):
-        return RLSQuerySet(self.model, using=self._db)
 
     def for_user(self, user):
-        return self.get_queryset().for_user(user)
+        return RLSQuerySet(self.model, using=self._db).for_user(user)
