@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-    <h4 class="my-3">Choose the activity types</h4>
+    <h4 class="my-3">Choose</h4>
 
     <div class="list-group">
-        {% for template in object_list %}
-            <a href="{{ template.get_absolute_url }}" class="list-group-item list-group-item-action">
-                {{ template.name }}
+        {% for object in object_list %}
+            <a href="{{ object.get_absolute_url }}" class="list-group-item list-group-item-action">
+                {{ object }}
             </a>
         {% endfor %}
     </div>

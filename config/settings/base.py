@@ -88,6 +88,8 @@ TEMPLATES = [
 WSGI_APPLICATION = 'ums.wsgi.application'
 
 #django-allauth settings
+ACCOUNT_ADAPTER = 'apps.users.adapters.NoSignupAccountAdapter'
+
 LOGIN_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 ACCOUNT_EMAIL_VERIFICATION = 'none'
@@ -95,7 +97,7 @@ ACCOUNT_EMAIL_VERIFICATION = 'none'
 # For phone authentication (requires more setup)
 ACCOUNT_LOGIN_METHODS = ["email", "phone"]
 ACCOUNT_PHONE_VERIFICATION_ENABLED = True
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 AUTH_USER_MODEL = 'users.CustomUser'
@@ -137,8 +139,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = PROJECT_DIR / 'staticfiles'
-STATICFILES_DIRS = [PROJECT_DIR / 'static']
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
