@@ -13,9 +13,6 @@ class FormTemplateBuilder {
 
         this.initEventListeners();
         this.loadInitialData();
-        if (this.initialData.length === 0) {
-            this.addQuestion();
-        }
     }
 
     initEventListeners() {

@@ -1,3 +1,4 @@
+from django.db.models.query import QuerySet
 from django.views.generic import ListView, View, CreateView
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import PermissionRequiredMixin
@@ -11,6 +12,9 @@ from .forms import ActivityTemplateForm
 class ActivityListView(ListViewPermissionMixin, ListView):
     model = Activity
     template_name = 'core/generic_list.html' # Use the generic template
+
+    def get_queryset(self):
+        return self.model.objects.for_user(self.request.user)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -32,6 +36,7 @@ class ActivityTemplateSelectView(PermissionRequiredMixin, ListView):
     model = ActivityTemplate
     permission_required = 'activities.add_activity'
     template_name = 'activities/activitytemplate_select.html'
+
 
 class ActivityCreateView(CreateViewPermissionMixin, View):
     model = Activity
@@ -81,3 +86,22 @@ class ActivityTemplateCreateView(TemplateBuilderMixin, CreateView):
     template_name = 'core/template_builder.html'
     success_url = reverse_lazy('activities:view_activity')
     json_field_name_in_model = 'template_json'
+
+class ActivityTemplateListView(ListViewPermissionMixin, ListView):
+    model = ActivityTemplate
+    template_name = 'core/generic_list.html' # Use the generic template
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['table_headers'] = ['Type']
+        context['table_fields'] = ['name']
+
+        # check permission
+        user = self.request.user
+        for action in ["add",]:
+            permission = f'{self.app_label}.{action}_{self.model_name}'
+            if user.has_perm(permission):
+                url = permission.replace('.', ':')
+                context[f"{action}_url"] = url
+
+        return context
