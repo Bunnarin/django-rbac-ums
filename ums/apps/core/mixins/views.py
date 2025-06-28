@@ -73,32 +73,3 @@ class DeleteViewPermissionMixin(PermissionRequiredMixin):
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.delete_{self.model_name}']
-
-class TemplateBuilderMixin:
-    """
-    Mixin for Django Create/Update Views that handle dynamic JSON field creation
-    via a frontend builder.
-
-    It expects:
-    - A hidden input field in the form with the name matching the `json_field_name_in_model`.
-    - JavaScript on the frontend to populate this hidden input with a JSON string.
-    """
-    json_field_name_in_model = 'template_json' # Default field name in the model
-
-    def form_valid(self, form):
-        # Get the JSON string from the request.POST (from the hidden input field)
-        template_json_str = self.request.POST.get(self.json_field_name_in_model)
-
-        if template_json_str:
-            try:
-                # Parse the JSON string into a Python list/dict
-                setattr(form.instance, self.json_field_name_in_model, json.loads(template_json_str))
-            except json.JSONDecodeError:
-                # Add a form error if the JSON is invalid
-                form.add_error(None, ValidationError(f"Invalid JSON data provided for {self.json_field_name_in_model}."))
-                return self.form_invalid(form)
-        else:
-            # If no JSON data, default to an empty list (or whatever your model default is)
-            setattr(form.instance, self.json_field_name_in_model, [])
-
-        return super().form_valid(form)

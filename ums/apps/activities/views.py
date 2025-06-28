@@ -3,9 +3,9 @@ from django.views.generic import ListView, View, CreateView, DeleteView
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.urls import reverse_lazy
-from apps.core.views import BaseExportView
+from apps.core.views import BaseExportView, BaseTemplateBuilderMixin
 from apps.core.forms import generate_dynamic_form_class
-from apps.core.mixins.views import ListViewPermissionMixin, CreateViewPermissionMixin, TemplateBuilderMixin, DeleteViewPermissionMixin
+from apps.core.mixins.views import ListViewPermissionMixin, CreateViewPermissionMixin, DeleteViewPermissionMixin
 from .models import Activity, ActivityTemplate
 from .forms import ActivityTemplateForm
 # Create your views here.
@@ -80,7 +80,7 @@ class ActivityExportView(BaseExportView):
     sheet_name = "Activities Data"
     json_fields_to_extract = ['response_json']
 
-class ActivityTemplateCreateView(TemplateBuilderMixin, CreateView):
+class ActivityTemplateCreateView(BaseTemplateBuilderMixin, CreateView):
     model = ActivityTemplate
     form_class = ActivityTemplateForm
     template_name = 'core/template_builder.html'
