@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block content %}
+    <div class="container mt-4">
+        <h2>{% if object %}Edit{% else %}Create New{% endif %} Activity Template</h2>
+        <form method="post" id="templateForm">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label for="{{ form.name.id_for_label }}" class="form-label">Template Name:</label>
+                {% render_field form.name class="form-control" %}
+                {% if form.name.help_text %}
+                    <div class="form-text">{{ form.name.help_text }}</div>
+                {% endif %}
+                {% for error in form.name.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <hr>
+            <h4>Define Questions</h4>
+            <div id="questionsContainer">
+                {# Dynamic question blocks will be added here by JavaScript #}
+            </div>
+
+            <button type="button" id="addQuestionBtn" class="btn btn-info mb-3">
+                <i class="fas fa-plus"></i> Add Question
+            </button>
+
+            {# Hidden input to store the JSON string, populated by JavaScript #}
+            <input type="hidden" name="template_json" id="templateJsonInput">
+
+            <div class="d-flex justify-content-between mt-4">
+                <button type="submit" class="btn btn-primary">Save Template</button>
+                <a href="{% url 'activities:view_activity' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger mt-3">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </form>
+    </div>
+
+    {# Hidden template for cloning question blocks #}
+    <template id="questionTemplate">
+        <div class="card mb-3 question-block" data-index="0">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Question <span class="question-number">1</span></h5>
+                <button type="button" class="btn btn-danger btn-sm remove-question">
+                    <i class="fas fa-times"></i> Remove
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Question:</label>
+                    <input type="text" class="form-control question-title">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Type:</label>
+                    <select class="form-select field-type">
+                        <option value="text">Text (short answer)</option>
+                        <option value="paragraph">Paragraph (long answer)</option>
+                        <option value="integer">Integer Number</option>
+                        <option value="decimal">Decimal Number</option>
+                        <option value="dropdown">Dropdown (single select)</option>
+                        <option value="checkbox">Checkboxes (multiple select)</option>
+                        <option value="date">Date</option>
+                    </select>
+                </div>
+
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input is-required" id="is_required_0">
+                    <label class="form-check-label" for="is_required_0">Required?</label>
+                </div>
+
+                <div class="type-specific-options mt-3 border p-3 rounded bg-light">
+                    <h6>Type-Specific Settings:</h6>
+                    <div class="choices-group" style="display: none;">
+                        <label class="form-label">Choices (one per line):</label>
+                        <textarea class="form-control field-choices" rows="3" placeholder="Enter each choice on a new line."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/core/template_builder.js' %}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const initialTemplateJsonElement = document.getElementById('initialTemplateJson');
+            let initialData = [];
+            if (initialTemplateJsonElement && initialTemplateJsonElement.textContent) {
+                try {
+                    initialData = JSON.parse(initialTemplateJsonElement.textContent);
+                } catch (e) {
+                    console.error("Error parsing initial template JSON:", e);
+                }
+            }
+
+            new FormTemplateBuilder({
+                containerId: 'questionsContainer',
+                addBtnId: 'addQuestionBtn',
+                templateId: 'questionTemplate',
+                formId: 'templateForm',
+                jsonInputId: 'templateJsonInput',
+                initialData: initialData
+            });
+        });
+    </script>
+    {% if object and object.template_json %}
+        <div id="initialTemplateJson" style="display:none;">{{ object.template_json|json_script:"initialTemplateJson" }}</div>
+    {% endif %}
+{% endblock %}

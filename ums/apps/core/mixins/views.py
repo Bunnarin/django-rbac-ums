@@ -1,7 +1,8 @@
+import json
 from django.contrib.auth.mixins import AccessMixin
 from django.core.exceptions import ImproperlyConfigured
 from django.contrib.auth.mixins import PermissionRequiredMixin
-
+from django.forms import ValidationError
 
 class ListViewPermissionMixin(AccessMixin):
     """
@@ -12,12 +13,6 @@ class ListViewPermissionMixin(AccessMixin):
     Assumes your model manager has a `.for_user(user)` method to
     filter objects specific to a user's permissions/ownership.
     """
-    permission_map = {
-        'view': 'view',
-        'change': 'change',
-        'delete': 'delete',
-    }
-
     def get_permission_model(self):
         if not hasattr(self, 'model') or self.model is None:
             raise ImproperlyConfigured(
@@ -32,12 +27,12 @@ class ListViewPermissionMixin(AccessMixin):
         based on the `permission_map`.
         """
         model_obj = self.get_permission_model()
-        app_label = model_obj._meta.app_label
-        model_name = model_obj._meta.model_name
+        self.app_label = model_obj._meta.app_label
+        self.model_name = model_obj._meta.model_name
 
         permissions = []
-        for action_prefix in self.permission_map.values():
-            permissions.append(f"{app_label}.{action_prefix}_{model_name}")
+        for action in ["view", "change", "delete"]: # if can change or delete, automatically can view
+            permissions.append(f"{self.app_label}.{action}_{self.model_name}")
         return permissions
 
     def get_queryset(self):
@@ -73,9 +68,9 @@ class CreateViewPermissionMixin(PermissionRequiredMixin):
                 "AddViewPermissionMixin requires the view to have a 'model' attribute."
             )
 
-        app_label = self.model._meta.app_label
-        model_name = self.model._meta.model_name.lower()
-        return [f'{app_label}.add_{model_name}']
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name.lower()
+        return [f'{self.app_label}.add_{self.model_name}']
 
 class UpdateViewPermissionMixin(PermissionRequiredMixin):
     """
@@ -91,9 +86,9 @@ class UpdateViewPermissionMixin(PermissionRequiredMixin):
                 "AddViewPermissionMixin requires the view to have a 'model' attribute."
             )
 
-        app_label = self.model._meta.app_label
-        model_name = self.model._meta.model_name.lower()
-        return [f'{app_label}.change_{model_name}']
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name.lower()
+        return [f'{self.app_label}.change_{self.model_name}']
 
 class DeleteViewPermissionMixin(PermissionRequiredMixin):
     """
@@ -109,6 +104,35 @@ class DeleteViewPermissionMixin(PermissionRequiredMixin):
                 "AddViewPermissionMixin requires the view to have a 'model' attribute."
             )
 
-        app_label = self.model._meta.app_label
-        model_name = self.model._meta.model_name.lower()
-        return [f'{app_label}.delete_{model_name}']
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name.lower()
+        return [f'{self.app_label}.delete_{self.model_name}']
+
+class TemplateBuilderMixin:
+    """
+    Mixin for Django Create/Update Views that handle dynamic JSON field creation
+    via a frontend builder.
+
+    It expects:
+    - A hidden input field in the form with the name matching the `json_field_name_in_model`.
+    - JavaScript on the frontend to populate this hidden input with a JSON string.
+    """
+    json_field_name_in_model = 'template_json' # Default field name in the model
+
+    def form_valid(self, form):
+        # Get the JSON string from the request.POST (from the hidden input field)
+        template_json_str = self.request.POST.get(self.json_field_name_in_model)
+
+        if template_json_str:
+            try:
+                # Parse the JSON string into a Python list/dict
+                setattr(form.instance, self.json_field_name_in_model, json.loads(template_json_str))
+            except json.JSONDecodeError:
+                # Add a form error if the JSON is invalid
+                form.add_error(None, ValidationError(f"Invalid JSON data provided for {self.json_field_name_in_model}."))
+                return self.form_invalid(form)
+        else:
+            # If no JSON data, default to an empty list (or whatever your model default is)
+            setattr(form.instance, self.json_field_name_in_model, [])
+
+        return super().form_valid(form)

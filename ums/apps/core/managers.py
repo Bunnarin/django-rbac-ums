@@ -10,9 +10,6 @@ class RLSQuerySet(models.QuerySet):
     """
 
     def for_user(self, user):
-        if not user.is_authenticated:
-            return self.none() # Anonymous users see nothing by default
-
         if user.is_superuser:
             return self # Superuser bypasses all RLS
 

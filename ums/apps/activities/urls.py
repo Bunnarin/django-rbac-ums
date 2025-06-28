@@ -8,4 +8,5 @@ urlpatterns = [
     path('create/templates/', views.ActivityTemplateSelectView.as_view(), name='add_activity'),
     path('create/<int:template_pk>/', views.ActivityCreateView.as_view(), name='submit_activity'),
     path('export/', views.ActivityExportView.as_view(), name='export_activity'),
+    path('templates/create/', views.ActivityTemplateCreateView.as_view(), name='create_activitytemplate'),
 ]

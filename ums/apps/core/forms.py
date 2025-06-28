@@ -14,7 +14,7 @@ def generate_dynamic_form_class(json_template, form_name="DynamicForm"):
             'required': field_def.get('required'),
         }
 
-        choices = [(item, item) for item in field_def.get('choices', None)]
+        choices = [(item, item) for item in field_def.get('choices', [])]
         if choices:
             fieldKwargs['choices'] = choices
 
