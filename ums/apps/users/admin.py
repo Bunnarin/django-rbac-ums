@@ -6,10 +6,6 @@ from .models import CustomUser
 
 @admin.register(CustomUser)
 class MyCustomUserAdmin(UserAdmin):
-    """
-    Custom UserAdmin to control fields on the Add User form.
-    """
-
     list_display = ('username', 'faculty', 'program',)
 
     add_fieldsets = (

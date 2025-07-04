@@ -152,14 +152,11 @@ class BaseTemplateBuilderView:
 
         if template_json_str:
             try:
-                # Parse the JSON string into a Python list/dict
                 setattr(form.instance, self.json_field_name_in_model, json.loads(template_json_str))
             except json.JSONDecodeError:
-                # Add a form error if the JSON is invalid
                 form.add_error(None, ValidationError(f"Invalid JSON data provided for {self.json_field_name_in_model}."))
                 return self.form_invalid(form)
         else:
-            # If no JSON data, default to an empty list (or whatever your model default is)
             setattr(form.instance, self.json_field_name_in_model, [])
 
         return super().form_valid(form)
