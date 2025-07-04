@@ -38,7 +38,9 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    # custom user
     'apps.users',
+    # django
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -50,7 +52,6 @@ INSTALLED_APPS = [
     'allauth.account',
     # extensions
     'widget_tweaks',
-    'apps.admin_extensions',
     # custom apps
     'apps.core',
     'apps.activities',

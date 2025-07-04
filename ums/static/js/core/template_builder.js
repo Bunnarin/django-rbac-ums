@@ -147,9 +147,6 @@ class FormTemplateBuilder {
         if (templateData !== null) {
             this.jsonInput.value = JSON.stringify(templateData);
             this.formElement.submit(); // Submit the form programmatically
-        } else {
-            // Validation failed, alerts already shown by collectTemplateJsonData
-            // No further action needed here.
         }
     }
 }

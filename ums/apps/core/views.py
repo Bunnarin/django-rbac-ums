@@ -135,7 +135,7 @@ class BaseExportView(View):
 
         return response
 
-class BaseTemplateBuilderMixin:
+class BaseTemplateBuilderView:
     """
     Mixin for Django Create/Update Views that handle dynamic JSON field creation
     via a frontend builder.

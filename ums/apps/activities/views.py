@@ -1,9 +1,8 @@
-from django.db.models.query import QuerySet
 from django.views.generic import ListView, View, CreateView, DeleteView
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.urls import reverse_lazy
-from apps.core.views import BaseExportView, BaseTemplateBuilderMixin
+from apps.core.views import BaseExportView, BaseTemplateBuilderView
 from apps.core.forms import generate_dynamic_form_class
 from apps.core.mixins.views import ListViewPermissionMixin, CreateViewPermissionMixin, DeleteViewPermissionMixin
 from .models import Activity, ActivityTemplate
@@ -18,8 +17,8 @@ class ActivityListView(ListViewPermissionMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['table_headers'] = ['Author', 'Faculty', 'Program', 'Type']
-        context['table_fields'] = ['author', 'faculty', 'program', 'template']
+        context['table_headers'] = ['Author', 'Faculty', 'Type']
+        context['table_fields'] = ['author', 'faculty', 'template']
 
         # check permission
         user = self.request.user
@@ -36,7 +35,6 @@ class ActivityTemplateSelectView(PermissionRequiredMixin, ListView):
     model = ActivityTemplate
     permission_required = 'activities.add_activity'
     template_name = 'activities/activitytemplate_select.html'
-
 
 class ActivityCreateView(CreateViewPermissionMixin, View):
     model = Activity
@@ -56,7 +54,6 @@ class ActivityCreateView(CreateViewPermissionMixin, View):
         form = Form(request.POST)
 
         if form.is_valid():
-            # inject the author, faculty, and program into the form data
             Activity.objects.create(
                 template = activity_template,
                 author = request.user,
@@ -80,7 +77,7 @@ class ActivityExportView(BaseExportView):
     sheet_name = "Activities Data"
     json_fields_to_extract = ['response_json']
 
-class ActivityTemplateCreateView(BaseTemplateBuilderMixin, CreateView):
+class ActivityTemplateCreateView(BaseTemplateBuilderView, CreateView):
     model = ActivityTemplate
     form_class = ActivityTemplateForm
     template_name = 'core/template_builder.html'
@@ -89,7 +86,7 @@ class ActivityTemplateCreateView(BaseTemplateBuilderMixin, CreateView):
 
 class ActivityTemplateListView(ListViewPermissionMixin, ListView):
     model = ActivityTemplate
-    template_name = 'core/generic_list.html' # Use the generic template
+    template_name = 'core/generic_list.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

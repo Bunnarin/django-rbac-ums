@@ -4,19 +4,13 @@
 
 {% block content %}
     <div class="container mt-4">
-        <h2>{% if object %}Edit{% else %}Create New{% endif %} Activity Template</h2>
+        <h2>{% if object %}Edit{% else %}Create New{% endif %} Template</h2>
         <form method="post" id="templateForm">
             {% csrf_token %}
 
             <div class="mb-3">
                 <label for="{{ form.name.id_for_label }}" class="form-label">Template Name:</label>
                 {% render_field form.name class="form-control" %}
-                {% if form.name.help_text %}
-                    <div class="form-text">{{ form.name.help_text }}</div>
-                {% endif %}
-                {% for error in form.name.errors %}
-                    <div class="invalid-feedback d-block">{{ error }}</div>
-                {% endfor %}
             </div>
 
             <hr>
@@ -35,14 +29,6 @@
             <div class="d-flex justify-content-between mt-4">
                 <button type="submit" class="btn btn-primary">Save Template</button>
             </div>
-
-            {% if form.non_field_errors %}
-                <div class="alert alert-danger mt-3">
-                    {% for error in form.non_field_errors %}
-                        {{ error }}
-                    {% endfor %}
-                </div>
-            {% endif %}
         </form>
     </div>
 

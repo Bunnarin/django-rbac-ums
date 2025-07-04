@@ -29,7 +29,8 @@ def generate_dynamic_form_class(json_template, form_name="DynamicForm"):
             case 'date': form_field = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}), **fieldKwargs)
 
         if form_field:
-            form_fields[f"field_{i}"] = form_field
+            label = field_def.get('label')
+            form_fields[label] = form_field
 
     DynamicForm = type(
         form_name,

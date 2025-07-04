@@ -12,7 +12,6 @@ class OrganizationMixin(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name="Faculty Affiliation",
         related_name='%(class)s_set_by_faculty', # Dynamic related_name
     )
     program = models.ForeignKey(
@@ -20,7 +19,6 @@ class OrganizationMixin(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name="Program Affiliation",
         related_name='%(class)s_set_by_program', # Dynamic related_name
     )
 
