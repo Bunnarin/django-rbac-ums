@@ -4,22 +4,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.db.models import Q
 from allauth.account.models import EmailAddress
 from .models import CustomUser
-
-@admin.register(CustomUser)
-class MyCustomUserAdmin(UserAdmin):
-    list_display = ('username', 'faculty', 'program',)
-
-    add_fieldsets = (
-        (None, {'fields': ('username','email',),}),
-        ('Affiliations', {'fields': ('faculty','program',),}),
-        ('Permissions', {'fields': ('is_active','is_staff','groups',),}),
-    )
-
-    fieldsets = (
-        (None, {'fields': ('username','email',),}),
-        ('Affiliations', {'fields': ('faculty','program',),}),
-        ('Permissions', {'fields': ('is_active','is_staff','groups',),}),
-    )
+from .forms import CustomUserCreationForm # Your custom forms
 
 admin.site.unregister(Group)
 @admin.register(Group)
@@ -33,9 +18,7 @@ class CustomGroupAdmin(admin.ModelAdmin):
             if request and not request.user.is_superuser:
                 user = request.user
                 user_perms_direct = user.user_permissions.all()
-                user_perms_via_groups = Permission.objects.filter(
-                    group__in=user.groups.all()
-                )
+                user_perms_via_groups = Permission.objects.filter(group__in=user.groups.all())
 
                 allowed_permissions_qs = (user_perms_direct | user_perms_via_groups).distinct()
 
@@ -54,3 +37,23 @@ class CustomGroupAdmin(admin.ModelAdmin):
         return super().formfield_for_manytomany(db_field, request=request, **kwargs)
 
 admin.site.unregister(EmailAddress)
+
+@admin.register(CustomUser)
+class CustomUserAdmin(UserAdmin):
+    add_form = CustomUserCreationForm
+
+    list_display = ('username', 'is_staff','faculty', 'program',)
+    list_filter = ('is_staff', 'groups', 'faculty', 'program',)
+    search_fields = ('email','username',)
+
+    add_fieldsets = (
+        (None, {'fields': ('username','email','phone_number'),}),
+        ('Affiliations', {'fields': ('faculty','program',),}),
+        ('Permissions', {'fields': ('is_active','is_staff','groups',),}),
+    )
+
+    fieldsets = (
+        (None, {'fields': ('username','email','phone_number'),}),
+        ('Affiliations', {'fields': ('faculty','program',),}),
+        ('Permissions', {'fields': ('is_active','is_staff','groups',),}),
+    )
