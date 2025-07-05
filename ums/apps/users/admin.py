@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.admin import UserAdmin
 from django.db.models import Q
+from allauth.account.models import EmailAddress
 from .models import CustomUser
 
 @admin.register(CustomUser)
@@ -51,3 +52,5 @@ class CustomGroupAdmin(admin.ModelAdmin):
                 kwargs["queryset"] = Permission.objects.all().select_related("content_type")
 
         return super().formfield_for_manytomany(db_field, request=request, **kwargs)
+
+admin.site.unregister(EmailAddress)

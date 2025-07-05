@@ -1,9 +1,10 @@
 import openpyxl
 import json
 from io import BytesIO
+from datetime import datetime, date
 from django.http import HttpResponse
 from django.views.generic import View
-from datetime import datetime, date
+from django.utils import timezone
 
 class BaseExportView(View):
     model = None
@@ -19,7 +20,6 @@ class BaseExportView(View):
         return self.model.objects.for_user(self.request.user)
 
     def _get_nested_attr(self, obj, attr_path):
-        # ... (existing _get_nested_attr method) ...
         attrs = attr_path.split('.')
         current_obj = obj
         for attr in attrs:
@@ -32,12 +32,17 @@ class BaseExportView(View):
         return current_obj
 
     def _format_value_for_excel(self, value):
-        # ... (existing _format_value_for_excel method) ...
         if isinstance(value, (dict, list)):
             return ", ".join(map(str, value))
         elif isinstance(value, datetime):
+            if timezone.is_aware(value):
+                target_timezone = timezone.get_current_timezone()
+                value = value.astimezone(target_timezone)
             return value.strftime('%Y-%m-%d %H:%M:%S')
         elif isinstance(value, date):
+            if timezone.is_aware(value):
+                target_timezone = timezone.get_current_timezone()
+                value = value.astimezone(target_timezone)
             return value.strftime('%Y-%m-%d')
         elif value is None:
             return ''
@@ -58,8 +63,6 @@ class BaseExportView(View):
         main_sheet.append(main_sheet_headers)
 
         # --- Determine Context Headers for JSON Sheets ---
-        # These are the fields from fields_to_export that are NOT JSON fields
-        # and thus serve as identifying context for the JSON data.
         json_context_fields_paths = []
         json_context_headers = []
         for field_path, header_name in self.fields_to_export:

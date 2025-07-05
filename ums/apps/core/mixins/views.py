@@ -1,11 +1,9 @@
-import json
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.forms import ValidationError
 
 class ListViewPermissionMixin(PermissionRequiredMixin):
     def get_permission_required(self):
         """
-        Dynamically determines the permission required based on the view's model.
+        user can viewif they have view, update, or delete permissions
         """
         if not hasattr(self, 'model') or not self.model:
             raise AttributeError(
@@ -18,7 +16,7 @@ class ListViewPermissionMixin(PermissionRequiredMixin):
         for action in ["view", "change", "delete"]:
             if user.has_perm(f'{self.app_label}.{action}_{self.model_name}'):
                 return [f'{self.app_label}.{action}_{self.model_name}']
-        return [f'{self.app_label}.view_{self.model_name}'] # Default to view permission if no other permissions are found
+        return [f'{self.app_label}.view_{self.model_name}'] # Default to view permission
 
 class CreateViewPermissionMixin(PermissionRequiredMixin):
     """

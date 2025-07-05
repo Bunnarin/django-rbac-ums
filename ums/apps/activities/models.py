@@ -4,7 +4,7 @@ from django.urls import reverse
 from apps.core.json_encoder import CustomJSONEncoder
 from apps.core.managers import RLSManager
 from apps.core.mixins.models import TimestampMixin, AuthorMixin, UserRLSMixin
-from apps.organization.mixins import FacultyMixin
+from apps.organization.mixins import FacultyNullMixin
 
 # Create your models here.
 class ActivityTemplate(models.Model):
@@ -16,7 +16,7 @@ class ActivityTemplate(models.Model):
 
     def __str__(self): return self.name
 
-class Activity(TimestampMixin, AuthorMixin, FacultyMixin, UserRLSMixin):
+class Activity(TimestampMixin, AuthorMixin, FacultyNullMixin, UserRLSMixin):
     template = models.ForeignKey(ActivityTemplate, null=True, on_delete=models.SET_NULL)
     response_json = models.JSONField(encoder=CustomJSONEncoder, default=dict)
 

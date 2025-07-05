@@ -1,8 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from phonenumber_field.modelfields import PhoneNumberField
-from apps.organization.mixins import OrganizationMixin
+from apps.organization.mixins import OrganizationNullMixin
 
-class CustomUser(OrganizationMixin, AbstractUser):
+class CustomUser(OrganizationNullMixin, AbstractUser):
     phone_number = PhoneNumberField(max_length=15, blank=True, null=True, unique=True)
 
     def __str__(self):

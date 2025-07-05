@@ -38,8 +38,6 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    # custom user
-    'apps.users',
     # django
     'django.contrib.admin',
     'django.contrib.auth',
@@ -54,6 +52,7 @@ INSTALLED_APPS = [
     'widget_tweaks',
     # custom apps
     'apps.core',
+    'apps.users',
     'apps.activities',
     'apps.organization',
 ]
@@ -96,7 +95,7 @@ ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 
 # For phone authentication (requires more setup)
-ACCOUNT_LOGIN_METHODS = ["email", "phone"]
+ACCOUNT_LOGIN_METHODS = ["email", "phone", "username"]
 ACCOUNT_PHONE_VERIFICATION_ENABLED = True
 
 # Password validation

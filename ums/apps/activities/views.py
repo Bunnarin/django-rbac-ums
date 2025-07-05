@@ -22,7 +22,7 @@ class ActivityListView(ListViewPermissionMixin, ListView):
 
         # check permission
         user = self.request.user
-        for action in ["add",]:
+        for action in ["add", "delete"]:
             permission = f'{self.app_label}.{action}_{self.model_name}'
             if user.has_perm(permission):
                 url = permission.replace('.', ':')
@@ -64,7 +64,7 @@ class ActivityCreateView(CreateViewPermissionMixin, View):
         else:
             return render(request, self.template_name, {'form': form})
 
-class ActivityExportView(BaseExportView):
+class ActivityExportView(ListViewPermissionMixin, BaseExportView):
     model = Activity
     fields_to_export = [
         ('template', 'Type'),
@@ -76,6 +76,17 @@ class ActivityExportView(BaseExportView):
     filename = "activities_export.xlsx"
     sheet_name = "Activities Data"
     json_fields_to_extract = ['response_json']
+
+class ActivityDeleteView(DeleteViewPermissionMixin, DeleteView):
+    model = Activity
+    pk_url_kwarg = 'pk'
+    template_name = 'core/generic_delete.html'
+    success_url = reverse_lazy('activities:view_activity')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["cancel_url"] = f'{self.app_label}:view_{self.model_name}'
+        return context
 
 class ActivityTemplateCreateView(BaseTemplateBuilderView, CreateView):
     model = ActivityTemplate
@@ -105,7 +116,7 @@ class ActivityTemplateListView(ListViewPermissionMixin, ListView):
 
 class ActivityTemplateDeleteView(DeleteViewPermissionMixin, DeleteView):
     model = ActivityTemplate
-    pk_url_kwarg = 'template_pk'
+    pk_url_kwarg = 'pk'
     template_name = 'core/generic_delete.html'
     success_url = reverse_lazy('activities:view_activitytemplate')
 
