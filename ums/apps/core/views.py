@@ -1,10 +1,12 @@
+from django.urls import reverse_lazy
 import openpyxl
 import json
 from io import BytesIO
 from datetime import datetime, date
 from django.http import HttpResponse
-from django.views.generic import View
+from django.views.generic import View, ListView, DeleteView
 from django.utils import timezone
+from django.contrib.auth.mixins import PermissionRequiredMixin
 
 class BaseExportView(View):
     model = None
@@ -163,3 +165,102 @@ class BaseTemplateBuilderView:
             setattr(form.instance, self.json_field_name_in_model, [])
 
         return super().form_valid(form)
+
+class BaseListView(PermissionRequiredMixin, ListView):
+    model = None
+    actions = []
+    template_name = 'core/generic_list.html'
+    table_fields = []
+
+    def get_permission_required(self):
+        """
+        user can view if they have view, update, or delete permissions
+        """
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name.lower()
+        user = self.request.user
+        for action in ["view", "change", "delete"]:
+            if user.has_perm(f'{self.app_label}.{action}_{self.model_name}'):
+                return [f'{self.app_label}.{action}_{self.model_name}']
+        return [f'{self.app_label}.view_{self.model_name}'] # Default to view permission
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['table_headers'] = self.table_fields
+        context['table_fields'] = self.table_fields
+
+        # check permission
+        user = self.request.user
+        for action in self.actions:
+            if action == "export":
+                url = f'{self.app_label}:export_{self.model_name}'
+                context["export_url"] = url
+                continue
+
+            permission = f'{self.app_label}.{action}_{self.model_name}'
+            if user.has_perm(permission):
+                url = permission.replace('.', ':')
+                context[f"{action}_url"] = url
+
+        return context
+
+class CreateViewPermissionMixin(PermissionRequiredMixin):
+    """
+    Mixin for views that require permission to add an object.
+    Checks if the user has the 'add' permission for the model.
+    """
+    def get_permission_required(self):
+        """
+        Dynamically determines the permission required based on the view's model.
+        """
+        if not hasattr(self, 'model') or not self.model:
+            raise AttributeError(
+                "AddViewPermissionMixin requires the view to have a 'model' attribute."
+            )
+
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name.lower()
+        return [f'{self.app_label}.add_{self.model_name}']
+
+class UpdateViewPermissionMixin(PermissionRequiredMixin):
+    """
+    Mixin for views that require permission to add an object.
+    Checks if the user has the 'add' permission for the model.
+    """
+    def get_permission_required(self):
+        """
+        Dynamically determines the permission required based on the view's model.
+        """
+        if not hasattr(self, 'model') or not self.model:
+            raise AttributeError(
+                "AddViewPermissionMixin requires the view to have a 'model' attribute."
+            )
+
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name.lower()
+        return [f'{self.app_label}.change_{self.model_name}']
+
+class BaseDeleteView(PermissionRequiredMixin, DeleteView):
+    """
+    Mixin for views that require permission to add an object.
+    Checks if the user has the 'add' permission for the model.
+    """
+    model = None
+    pk_url_kwarg = 'pk'
+    template_name = 'core/generic_delete.html'
+
+    def get_permission_required(self):
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name.lower()
+        """
+        Dynamically determines the permission required based on the view's model.
+        """
+        return [f'{self.app_label}.delete_{self.model_name}']
+
+    def get_success_url(self):
+        return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["cancel_url"] = f'{self.app_label}:view_{self.model_name}'
+        return context

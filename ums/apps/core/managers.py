@@ -1,5 +1,5 @@
 from django.db import models
-from apps.core.mixins.models import UserRLSMixin
+from apps.core.mixins import UserRLSMixin
 
 class RLSQuerySet(models.QuerySet):
     """

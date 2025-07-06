@@ -1,39 +1,21 @@
-from django.views.generic import ListView, View, CreateView, DeleteView
+from django.views.generic import ListView, View, CreateView
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.urls import reverse_lazy
-from apps.core.views import BaseExportView, BaseTemplateBuilderView
+from apps.core.views import BaseExportView, BaseTemplateBuilderView, BaseDeleteView, BaseListView, CreateViewPermissionMixin
 from apps.core.forms import generate_dynamic_form_class
-from apps.core.mixins.views import ListViewPermissionMixin, CreateViewPermissionMixin, DeleteViewPermissionMixin
 from .models import Activity, ActivityTemplate
 from .forms import ActivityTemplateForm
 # Create your views here.
-class ActivityListView(ListViewPermissionMixin, ListView):
+class ActivityListView(BaseListView):
     model = Activity
-    template_name = 'core/generic_list.html' # Use the generic template
+    actions = ["add", "export", "delete"]
+    table_fields = ['author', 'faculty', 'template']
 
     def get_queryset(self):
         return self.model.objects.for_user(self.request.user)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['table_headers'] = ['Author', 'Faculty', 'Type']
-        context['table_fields'] = ['author', 'faculty', 'template']
-
-        # check permission
-        user = self.request.user
-        for action in ["add", "delete"]:
-            permission = f'{self.app_label}.{action}_{self.model_name}'
-            if user.has_perm(permission):
-                url = permission.replace('.', ':')
-                context[f"{action}_url"] = url
-
-        context['export_url'] = f'{self.app_label}:export_{self.model_name}'
-        return context
-
-class ActivityTemplateSelectView(PermissionRequiredMixin, ListView):
+class ActivityTemplateSelectView(ListView):
     model = ActivityTemplate
-    permission_required = 'activities.add_activity'
     template_name = 'activities/activitytemplate_select.html'
 
 class ActivityCreateView(CreateViewPermissionMixin, View):
@@ -64,7 +46,7 @@ class ActivityCreateView(CreateViewPermissionMixin, View):
         else:
             return render(request, self.template_name, {'form': form})
 
-class ActivityExportView(ListViewPermissionMixin, BaseExportView):
+class ActivityExportView(BaseExportView):
     model = Activity
     fields_to_export = [
         ('template', 'Type'),
@@ -73,20 +55,13 @@ class ActivityExportView(ListViewPermissionMixin, BaseExportView):
         ('faculty', 'Faculty'),
         ('response_json', 'Response'),
     ]
-    filename = "activities_export.xlsx"
-    sheet_name = "Activities Data"
     json_fields_to_extract = ['response_json']
 
-class ActivityDeleteView(DeleteViewPermissionMixin, DeleteView):
+class ActivityDeleteView(BaseDeleteView):
     model = Activity
-    pk_url_kwarg = 'pk'
-    template_name = 'core/generic_delete.html'
-    success_url = reverse_lazy('activities:view_activity')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["cancel_url"] = f'{self.app_label}:view_{self.model_name}'
-        return context
+    def get_queryset(self):
+        return self.model.objects.for_user(self.request.user)
 
 class ActivityTemplateCreateView(BaseTemplateBuilderView, CreateView):
     model = ActivityTemplate
@@ -95,32 +70,10 @@ class ActivityTemplateCreateView(BaseTemplateBuilderView, CreateView):
     success_url = reverse_lazy('activities:view_activity')
     json_field_name_in_model = 'template_json'
 
-class ActivityTemplateListView(ListViewPermissionMixin, ListView):
+class ActivityTemplateListView(BaseListView):
     model = ActivityTemplate
-    template_name = 'core/generic_list.html'
+    actions = ["add", "delete"]
+    table_fields = ['name']
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['table_headers'] = ['Type']
-        context['table_fields'] = ['name']
-
-        # check permission
-        user = self.request.user
-        for action in ["add", "delete"]:
-            permission = f'{self.app_label}.{action}_{self.model_name}'
-            if user.has_perm(permission):
-                url = permission.replace('.', ':')
-                context[f"{action}_url"] = url
-
-        return context
-
-class ActivityTemplateDeleteView(DeleteViewPermissionMixin, DeleteView):
+class ActivityTemplateDeleteView(BaseDeleteView):
     model = ActivityTemplate
-    pk_url_kwarg = 'pk'
-    template_name = 'core/generic_delete.html'
-    success_url = reverse_lazy('activities:view_activitytemplate')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["cancel_url"] = f'{self.app_label}:view_{self.model_name}'
-        return context

@@ -4,7 +4,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.db.models import Q
 from allauth.account.models import EmailAddress
 from .models import CustomUser
-from .forms import CustomUserCreationForm # Your custom forms
+from .forms import CustomUserCreationForm
 
 admin.site.unregister(Group)
 @admin.register(Group)

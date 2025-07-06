@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.urls import reverse
 from apps.core.json_encoder import CustomJSONEncoder
 from apps.core.managers import RLSManager
-from apps.core.mixins.models import TimestampMixin, AuthorMixin, UserRLSMixin
+from apps.core.mixins import TimestampMixin, AuthorMixin, UserRLSMixin
 from apps.organization.mixins import FacultyNullMixin
 
 # Create your models here.
