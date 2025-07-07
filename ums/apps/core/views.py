@@ -16,10 +16,9 @@ class BaseExportView(View):
     json_fields_to_extract = []
 
     def get_queryset(self):
-        # ... (existing get_queryset method) ...
-        if self.model is None:
-            raise NotImplementedError("Subclasses must define 'model'.")
-        return self.model.objects.for_user(self.request.user)
+        if hasattr(self.model.objects, "for_user"):
+            return self.model.objects.for_user(self.request.user)
+        return super().get_queryset()
 
     def _get_nested_attr(self, obj, attr_path):
         attrs = attr_path.split('.')
@@ -204,6 +203,11 @@ class BaseListView(PermissionRequiredMixin, ListView):
 
         return context
 
+    def get_queryset(self):
+        if hasattr(self.model.objects, "for_user"):
+            return self.model.objects.for_user(self.request.user)
+        return super().get_queryset()
+
 class CreateViewPermissionMixin(PermissionRequiredMixin):
     """
     Mixin for views that require permission to add an object.
@@ -264,3 +268,8 @@ class BaseDeleteView(PermissionRequiredMixin, DeleteView):
         context = super().get_context_data(**kwargs)
         context["cancel_url"] = f'{self.app_label}:view_{self.model_name}'
         return context
+
+    def get_queryset(self):
+        if hasattr(self.model.objects, "for_user"):
+            return self.model.objects.for_user(self.request.user)
+        return super().get_queryset()

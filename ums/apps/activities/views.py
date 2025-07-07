@@ -11,9 +11,6 @@ class ActivityListView(BaseListView):
     actions = ["add", "export", "delete"]
     table_fields = ['author', 'faculty', 'template']
 
-    def get_queryset(self):
-        return self.model.objects.for_user(self.request.user)
-
 class ActivityTemplateSelectView(ListView):
     model = ActivityTemplate
     template_name = 'activities/activitytemplate_select.html'
@@ -59,9 +56,6 @@ class ActivityExportView(BaseExportView):
 
 class ActivityDeleteView(BaseDeleteView):
     model = Activity
-
-    def get_queryset(self):
-        return self.model.objects.for_user(self.request.user)
 
 class ActivityTemplateCreateView(BaseTemplateBuilderView, CreateView):
     model = ActivityTemplate
