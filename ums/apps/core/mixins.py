@@ -44,7 +44,7 @@ class UserRLSMixin(models.Model):
         you need to override this sht to author, professor, student...
         sht must be used with the RLSManager
         """
-        # example override
+        # example override (same for manytomany field)
         # return Q(author=user)
         raise NotImplementedError(
             f"Model {self.__class__.__name__} inheriting UserSpecificRLSMixin "

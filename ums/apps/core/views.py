@@ -3,8 +3,10 @@ import openpyxl
 import json
 from io import BytesIO
 from datetime import datetime, date
+from django import forms
+from django.core.exceptions import ValidationError
 from django.http import HttpResponse
-from django.views.generic import View, ListView, DeleteView
+from django.views.generic import View, ListView, DeleteView, CreateView
 from django.utils import timezone
 from django.contrib.auth.mixins import PermissionRequiredMixin
 
@@ -139,7 +141,7 @@ class BaseExportView(View):
 
         return response
 
-class BaseTemplateBuilderView:
+class BaseTemplateBuilderView(PermissionRequiredMixin, CreateView):
     """
     Mixin for Django Create/Update Views that handle dynamic JSON field creation
     via a frontend builder.
@@ -148,7 +150,33 @@ class BaseTemplateBuilderView:
     - A hidden input field in the form with the name matching the `json_field_name_in_model`.
     - JavaScript on the frontend to populate this hidden input with a JSON string.
     """
-    json_field_name_in_model = 'template_json' # Default field name in the model
+    default_form_fields = []
+    json_field_name_in_model = 'template_json'
+    template_name = 'core/template_builder.html'
+
+    def get_permission_required(self):
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name.lower()
+        return [f'{self.app_label}.add_{self.model_name}']
+
+    def get_form_class(self):
+        """
+        Dynamically generates a ModelForm class based on the view's 'model' attribute.
+        """
+        class Meta:
+            model = self.model  # <--- This is the key: uses the model from the view instance
+            fields = self.default_form_fields
+
+        DynamicModelForm = type(
+            f"{self.model.__name__}Form", # Name for the dynamic form class (e.g., ActivityTemplateForm)
+            (forms.ModelForm,),            # Base classes for the new form
+            {'Meta': Meta}                 # Attributes for the new form (Meta class)
+        )
+
+        return DynamicModelForm
+
+    def get_success_url(self):
+        return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
 
     def form_valid(self, form):
         # Get the JSON string from the request.POST (from the hidden input field)

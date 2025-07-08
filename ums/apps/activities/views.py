@@ -4,7 +4,6 @@ from django.urls import reverse_lazy
 from apps.core.views import BaseExportView, BaseTemplateBuilderView, BaseDeleteView, BaseListView, CreateViewPermissionMixin
 from apps.core.forms import generate_dynamic_form_class
 from .models import Activity, ActivityTemplate
-from .forms import ActivityTemplateForm
 # Create your views here.
 class ActivityListView(BaseListView):
     model = Activity
@@ -57,11 +56,9 @@ class ActivityExportView(BaseExportView):
 class ActivityDeleteView(BaseDeleteView):
     model = Activity
 
-class ActivityTemplateCreateView(BaseTemplateBuilderView, CreateView):
+class ActivityTemplateCreateView(BaseTemplateBuilderView):
     model = ActivityTemplate
-    form_class = ActivityTemplateForm
-    template_name = 'core/template_builder.html'
-    success_url = reverse_lazy('activities:view_activity')
+    default_form_fields = ['name']
     json_field_name_in_model = 'template_json'
 
 class ActivityTemplateListView(BaseListView):
