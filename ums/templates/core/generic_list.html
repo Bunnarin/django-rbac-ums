@@ -11,7 +11,6 @@
         {% if export_url %}
             <a href="{% url export_url %}" class="btn btn-success">Export</a>
         {% endif %}
-
     </div>
 
     <div class="table-responsive">
@@ -29,7 +28,6 @@
                     <tr>
                         {% for field in table_fields %}
                             <td>
-                                {# Use the new filter name here #}
                                 {{ obj|get_attr_from_object:field }}
                             </td>
                         {% endfor %}

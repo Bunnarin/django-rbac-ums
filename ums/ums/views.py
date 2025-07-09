@@ -33,30 +33,40 @@ def home_view(request):
             verbose_name_plural = model_class._meta.verbose_name_plural or f"{model_name}s"
             verbose_name_plural = verbose_name_plural.title()
 
-            list_url_name = f'{app_label}:view_{model_name}'
-
-            has_access = False
-            crud_perms = [
-                f'{app_label}.add_{model_name}',
+            has_rud_access = False
+            rud_perms = [
                 f'{app_label}.change_{model_name}',
                 f'{app_label}.delete_{model_name}',
                 f'{app_label}.view_{model_name}',
             ]
 
-            for perm in crud_perms:
+            for perm in rud_perms:
                 if request.user.has_perm(perm):
-                    has_access = True
+                    has_rud_access = True
                     break
 
-            if has_access:
+            has_add_access = False
+            if request.user.has_perm(f'{app_label}.add_{model_name}'):
+                has_add_access = True
+
+            if has_rud_access:
                 try:
-                    model_url = reverse(list_url_name)
+                    model_url = reverse(f'{app_label}:view_{model_name}')
                     accessible_models.append({
                         'name': verbose_name_plural,
                         'url': model_url,
                     })
                 except NoReverseMatch:
                     pass # Continue to the next model
+            elif has_add_access: # If no RUD access, check if user can add
+                try:
+                    model_url = reverse(f'{app_label}:add_{model_name}')
+                    accessible_models.append({
+                        'name': f'Add {verbose_name_plural}',
+                        'url': model_url,
+                    })
+                except NoReverseMatch:
+                    pass
 
     context = {
         'accessible_models': accessible_models

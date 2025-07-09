@@ -1,7 +1,7 @@
-from django.views.generic import ListView, View, CreateView
+from django.views.generic import ListView, View
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse_lazy
-from apps.core.views import BaseExportView, BaseTemplateBuilderView, BaseDeleteView, BaseListView, CreateViewPermissionMixin
+from django.contrib.auth.mixins import PermissionRequiredMixin
+from apps.core.views import BaseExportView, BaseTemplateBuilderView, BaseDeleteView, BaseListView
 from apps.core.forms import generate_dynamic_form_class
 from .models import Activity, ActivityTemplate
 # Create your views here.
@@ -14,9 +14,14 @@ class ActivityTemplateSelectView(ListView):
     model = ActivityTemplate
     template_name = 'activities/activitytemplate_select.html'
 
-class ActivityCreateView(CreateViewPermissionMixin, View):
+class ActivityCreateView(PermissionRequiredMixin, View):
     model = Activity
     template_name = 'core/generic_form.html'
+
+    def get_permission_required(self):
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name.lower()
+        return [f'{self.app_label}.add_{self.model_name}']
 
     def get(self, request, template_pk):
         activity_template = get_object_or_404(ActivityTemplate, pk=template_pk)

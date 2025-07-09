@@ -58,9 +58,8 @@ class BaseExportView(View):
         workbook = openpyxl.Workbook()
 
         # --- Main Data Sheet ---
-        main_sheet_name = self.sheet_name[:31].replace('/', '_').replace('\\', '_').replace('?', '_').replace('*', '_').replace('[', '_').replace(']', '_').replace(':', '_')
         main_sheet = workbook.active
-        main_sheet.title = main_sheet_name
+        main_sheet.title = self.sheet_name
 
         main_sheet_headers = [header for _, header in self.fields_to_export]
         main_sheet.append(main_sheet_headers)
@@ -145,10 +144,6 @@ class BaseTemplateBuilderView(PermissionRequiredMixin, CreateView):
     """
     Mixin for Django Create/Update Views that handle dynamic JSON field creation
     via a frontend builder.
-
-    It expects:
-    - A hidden input field in the form with the name matching the `json_field_name_in_model`.
-    - JavaScript on the frontend to populate this hidden input with a JSON string.
     """
     default_form_fields = []
     json_field_name_in_model = 'template_json'
@@ -164,7 +159,7 @@ class BaseTemplateBuilderView(PermissionRequiredMixin, CreateView):
         Dynamically generates a ModelForm class based on the view's 'model' attribute.
         """
         class Meta:
-            model = self.model  # <--- This is the key: uses the model from the view instance
+            model = self.model
             fields = self.default_form_fields
 
         DynamicModelForm = type(
@@ -189,7 +184,8 @@ class BaseTemplateBuilderView(PermissionRequiredMixin, CreateView):
                 form.add_error(None, ValidationError(f"Invalid JSON data provided for {self.json_field_name_in_model}."))
                 return self.form_invalid(form)
         else:
-            setattr(form.instance, self.json_field_name_in_model, [])
+            form.add_error(None, ValidationError(f"must have at least one question."))
+            return self.form_invalid(form)
 
         return super().form_valid(form)
 
@@ -200,9 +196,6 @@ class BaseListView(PermissionRequiredMixin, ListView):
     table_fields = []
 
     def get_permission_required(self):
-        """
-        user can view if they have view, update, or delete permissions
-        """
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         user = self.request.user
@@ -236,41 +229,20 @@ class BaseListView(PermissionRequiredMixin, ListView):
             return self.model.objects.for_user(self.request.user)
         return super().get_queryset()
 
-class CreateViewPermissionMixin(PermissionRequiredMixin):
+class BaseCreateView(PermissionRequiredMixin, CreateView):
     """
     Mixin for views that require permission to add an object.
     Checks if the user has the 'add' permission for the model.
     """
-    def get_permission_required(self):
-        """
-        Dynamically determines the permission required based on the view's model.
-        """
-        if not hasattr(self, 'model') or not self.model:
-            raise AttributeError(
-                "AddViewPermissionMixin requires the view to have a 'model' attribute."
-            )
+    model = None
+    template_name = 'core/generic_form.html'
+    fields = []
 
+    def get_permission_required(self):
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.add_{self.model_name}']
 
-class UpdateViewPermissionMixin(PermissionRequiredMixin):
-    """
-    Mixin for views that require permission to add an object.
-    Checks if the user has the 'add' permission for the model.
-    """
-    def get_permission_required(self):
-        """
-        Dynamically determines the permission required based on the view's model.
-        """
-        if not hasattr(self, 'model') or not self.model:
-            raise AttributeError(
-                "AddViewPermissionMixin requires the view to have a 'model' attribute."
-            )
-
-        self.app_label = self.model._meta.app_label
-        self.model_name = self.model._meta.model_name.lower()
-        return [f'{self.app_label}.change_{self.model_name}']
 
 class BaseDeleteView(PermissionRequiredMixin, DeleteView):
     """

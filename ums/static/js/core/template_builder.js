@@ -1,5 +1,3 @@
-// static/js/core/template_builder.js
-
 class FormTemplateBuilder {
     constructor(config) {
         this.questionsContainer = document.getElementById(config.containerId);
