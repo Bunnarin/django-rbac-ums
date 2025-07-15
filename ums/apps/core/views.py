@@ -5,10 +5,13 @@ from io import BytesIO
 from datetime import datetime, date
 from django import forms
 from django.core.exceptions import ValidationError
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.generic import View, ListView, DeleteView, CreateView
 from django.utils import timezone
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.shortcuts import redirect
 
 class BaseExportView(View):
     model = None
@@ -19,7 +22,7 @@ class BaseExportView(View):
 
     def get_queryset(self):
         if hasattr(self.model.objects, "for_user"):
-            return self.model.objects.for_user(self.request.user)
+            return self.model.objects.for_user(self.request)
         return super().get_queryset()
 
     def _get_nested_attr(self, obj, attr_path):
@@ -226,7 +229,7 @@ class BaseListView(PermissionRequiredMixin, ListView):
 
     def get_queryset(self):
         if hasattr(self.model.objects, "for_user"):
-            return self.model.objects.for_user(self.request.user)
+            return self.model.objects.for_user(self.request)
         return super().get_queryset()
 
 class BaseCreateView(PermissionRequiredMixin, CreateView):
@@ -242,7 +245,6 @@ class BaseCreateView(PermissionRequiredMixin, CreateView):
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.add_{self.model_name}']
-
 
 class BaseDeleteView(PermissionRequiredMixin, DeleteView):
     """
@@ -271,5 +273,47 @@ class BaseDeleteView(PermissionRequiredMixin, DeleteView):
 
     def get_queryset(self):
         if hasattr(self.model.objects, "for_user"):
-            return self.model.objects.for_user(self.request.user)
+            return self.model.objects.for_user(self.request)
         return super().get_queryset()
+
+@csrf_exempt
+@require_POST
+def set_faculty(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
+    
+    faculty_id = request.POST.get('faculty_id')
+    
+    if faculty_id:
+        try:
+            faculty_id = int(faculty_id)
+            # Check if the faculty is in user's faculties
+            if faculty_id not in request.user.faculties.values_list('id', flat=True):
+                return JsonResponse({'success': False, 'error': 'Unauthorized faculty'}, status=403)
+            request.session['selected_faculty'] = faculty_id
+            return redirect(request.META.get('HTTP_REFERER', '/'))
+            
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'error': 'Invalid faculty ID'}, status=400)
+    
+    return JsonResponse({'success': False, 'error': 'No faculty ID provided'}, status=400)
+
+@csrf_exempt
+@require_POST
+def set_program(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
+    
+    program_id = request.POST.get('program_id')
+    if program_id:
+        try:
+            program_id = int(program_id)
+            # Check if the program is in user's programs
+            if program_id not in request.user.programs.values_list('id', flat=True):
+                return JsonResponse({'success': False, 'error': 'Unauthorized program'}, status=403)
+            request.session['selected_program'] = program_id
+            return redirect(request.META.get('HTTP_REFERER', '/'))
+        except (ValueError, TypeError):
+            return JsonResponse({'success': False, 'error': 'Invalid program ID'}, status=400)
+    
+    return JsonResponse({'success': False, 'error': 'No program ID provided'}, status=400)

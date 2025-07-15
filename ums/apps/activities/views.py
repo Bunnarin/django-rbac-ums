@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from apps.core.views import BaseExportView, BaseTemplateBuilderView, BaseDeleteView, BaseListView
 from apps.core.forms import generate_dynamic_form_class
+from apps.organization.models import Faculty
 from .models import Activity, ActivityTemplate
 # Create your views here.
 class ActivityListView(BaseListView):
@@ -42,10 +43,11 @@ class ActivityCreateView(PermissionRequiredMixin, View):
         form = Form(request.POST)
 
         if form.is_valid():
+            faculty_id = request.session.get('selected_faculty')
             Activity.objects.create(
                 template = activity_template,
                 author = request.user,
-                faculty = request.user.faculty,
+                faculty = Faculty.objects.get(id=faculty_id),
                 response_json = form.cleaned_data,
             )
             return redirect(f'{self.app_label}:view_{self.model_name}')

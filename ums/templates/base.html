@@ -15,13 +15,36 @@
         <div class="container-fluid">
             <img src="{% static 'image/logo.png' %}" style="height: 40px; width: auto;">
             <a class="navbar-brand" href="/">RUA portal</a>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        {% if request.user.is_staff %}
-                            <a class="nav-link" href="/admin/">Admin</a>
-                        {% endif %}
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <form method="POST" action="{% url 'core:set_faculty' %}" id="faculty-form">
+                        {% csrf_token %}
+                        <select name="faculty_id" class="form-select" onchange="this.form.submit()">
+                            {% for faculty in user.faculties.all %}
+                                <option value="{{ faculty.id }}" {% if faculty.id == request.session.selected_faculty %}selected{% endif %}>
+                                    {{ faculty.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </li>
+                <li class="nav-item">
+                    <form method="POST" action="{% url 'core:set_program' %}" id="program-form">
+                        {% csrf_token %}
+                        <select name="program_id" class="form-select" onchange="this.form.submit()">
+                            {% for program in user.programs.all %}
+                            <option value="{{ program.id }}" {% if program.id == request.session.selected_program %}selected{% endif %}>
+                                    {{ program.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </form>
                     </li>
+                {% if request.user.is_staff %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/">Admin</a>
+                    </li>
+                {% endif %}
                 </ul>
             </div>
             <div class="d-flex">
@@ -52,6 +75,22 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
     {% block extra_js %}
+    <script>
+        // Prevent double submission
+        document.getElementById('faculty-form').addEventListener('submit', function(e) {
+            this.querySelector('select').disabled = true;
+        });
+
+        document.getElementById('program-form').addEventListener('submit', function(e) {
+            this.querySelector('select').disabled = true;
+        });
+
+        // Re-enable selects after page load
+        window.onload = function() {
+            const selects = document.querySelectorAll('select');
+            selects.forEach(select => select.disabled = false);
+        };
+    </script>
     {% endblock %}
 </body>
 </html>
