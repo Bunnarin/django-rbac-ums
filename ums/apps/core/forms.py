@@ -7,7 +7,7 @@ def generate_dynamic_form_class(json_template, form_name="DynamicForm"):
     """
     form_fields = {}
 
-    for i, field_def in enumerate(json_template):
+    for field_def in json_template:
         field_type = field_def.get('type')
         fieldKwargs = {
             'label': field_def.get('label'),

@@ -42,18 +42,18 @@ admin.site.unregister(EmailAddress)
 class CustomUserAdmin(UserAdmin):
     add_form = CustomUserCreationForm
 
-    list_display = ('username', 'is_staff','faculty', 'program',)
-    list_filter = ('is_staff', 'groups', 'faculty', 'program',)
+    list_display = ('username', 'is_staff',)
+    list_filter = ('is_staff', 'groups',)
     search_fields = ('email','username',)
 
     add_fieldsets = (
         (None, {'fields': ('username','email','phone_number'),}),
-        ('Affiliations', {'fields': ('faculty','program',),}),
+        ('Affiliations', {'fields': ('faculties','programs',),}),
         ('Permissions', {'fields': ('is_active','is_staff','groups',),}),
     )
 
     fieldsets = (
         (None, {'fields': ('username','email','phone_number'),}),
-        ('Affiliations', {'fields': ('faculty','program',),}),
+        ('Affiliations', {'fields': ('faculties','programs',),}),
         ('Permissions', {'fields': ('is_active','is_staff','groups',),}),
     )

@@ -1,9 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from phonenumber_field.modelfields import PhoneNumberField
-from apps.organization.mixins import OrganizationNullMixin
+from apps.organization.mixins import OrganizationsNullMixin
 
-class CustomUser(OrganizationNullMixin, AbstractUser):
+class CustomUser(OrganizationsNullMixin, AbstractUser):
     email = models.EmailField("email address", unique=True, blank=True, null=True,)
     phone_number = PhoneNumberField(max_length=16, unique=True, blank=True, null=True,)
 

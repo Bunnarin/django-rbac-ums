@@ -11,9 +11,6 @@ class ActivityTemplate(models.Model):
     name = models.CharField(max_length=255, unique=True)
     template_json = models.JSONField(encoder=CustomJSONEncoder, default=dict)
 
-    def get_absolute_url(self): # this redirect to create a activity with a pk of the template
-        return reverse('activities:submit_activity', args=[self.pk])
-
     def __str__(self): return self.name
 
 class Activity(TimestampMixin, AuthorMixin, FacultyNullMixin, UserRLSMixin):

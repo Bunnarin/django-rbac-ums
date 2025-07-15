@@ -4,7 +4,7 @@
 
     <div class="list-group">
         {% for object in object_list %}
-            <a href="{{ object.get_absolute_url }}" class="list-group-item list-group-item-action">
+            <a href="{% url redirect_url object.pk %}" class="list-group-item list-group-item-action">
                 {{ object }}
             </a>
         {% endfor %}

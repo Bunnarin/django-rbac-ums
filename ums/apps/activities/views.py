@@ -12,7 +12,12 @@ class ActivityListView(BaseListView):
 
 class ActivityTemplateSelectView(ListView):
     model = ActivityTemplate
-    template_name = 'activities/activitytemplate_select.html'
+    template_name = 'core/generic_select.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["redirect_url"] = f'activities:submit_activity'
+        return context
 
 class ActivityCreateView(PermissionRequiredMixin, View):
     model = Activity
