@@ -4,11 +4,19 @@ from phonenumber_field.modelfields import PhoneNumberField
 from apps.organization.mixins import OrganizationsNullMixin
 
 class CustomUser(OrganizationsNullMixin, AbstractUser):
-    email = models.EmailField("email address", unique=True, blank=True, null=True,)
-    phone_number = PhoneNumberField(max_length=16, unique=True, blank=True, null=True,)
+    email = models.EmailField("email address", unique=True, blank=True, null=True, default=None)
+    phone_number = PhoneNumberField(max_length=16, unique=True, blank=True, null=True, default=None)
 
     def __str__(self):
         return self.username
+
+    def save(self, *args, **kwargs):
+        """
+        This make sures that we can save multiple users with blank email
+        """
+        if self.email == '':
+            self.email = None
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "User"

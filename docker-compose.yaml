@@ -1,0 +1,44 @@
+services:
+  postgresql:
+    image: postgres
+    volumes:
+      - postgresql-db:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    env_file: "docker.env"
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  django_gunicorn:
+    build:
+      context: .
+    volumes:
+      - ./:/app
+      - ./staticfiles:/app/staticfiles
+    env_file: "docker.env"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  nginx:
+    build: 
+      context: nginx
+    volumes:
+      - ./staticfiles:/static
+    ports:
+      - "80:80"
+    depends_on:
+      - django_gunicorn
+
+volumes:
+  postgresql-db:
