@@ -60,7 +60,7 @@ class Activity(TimestampMixin, AuthorMixin, FacultyNullMixin, UserRLSMixin):
         return Q(author=user)
 
     def __str__(self): 
-        return self.template
+        return f"activity created by {self.author} and updated on {self.updated_at}"
 
     class Meta:
         verbose_name_plural = "Activities"

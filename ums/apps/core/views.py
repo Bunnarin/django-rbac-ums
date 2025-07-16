@@ -6,7 +6,7 @@ from datetime import datetime, date
 from django import forms
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse, JsonResponse
-from django.views.generic import View, ListView, DeleteView, CreateView
+from django.views.generic import View, ListView, DeleteView, CreateView, UpdateView
 from django.utils import timezone
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.decorators.csrf import csrf_exempt
@@ -190,23 +190,27 @@ class BaseExportView(View):
 
         return response
 
-class BaseTemplateBuilderView(PermissionRequiredMixin, CreateView):
+class BaseTemplateCreateView(PermissionRequiredMixin, CreateView):
     """
-    Mixin for Django Create/Update Views that handle dynamic JSON field creation
+    Base view for handling dynamic JSON field creation and updates
     via a frontend builder.
     
     Attributes:
         default_form_fields: List of fields to include in the form
-        json_field_name_in_model: Name of the JSON field in the model
-        template_name: Name of the template to use for rendering
+        json_field_name_in_model: Name of the JSON field in the model (default: 'template_json')
+        template_name: Name of the template to use for rendering (default: 'core/template_builder.html')
+        model: The model class
+        success_url_name: Name of the URL pattern to redirect to after success
     """
     default_form_fields = []
     json_field_name_in_model = 'template_json'
     template_name = 'core/template_builder.html'
+    model = None
 
     def get_permission_required(self):
         """
         Get the permission required for this view.
+        Returns different permissions for create vs update operations.
         
         Returns:
             list: List of permissions required
@@ -227,9 +231,9 @@ class BaseTemplateBuilderView(PermissionRequiredMixin, CreateView):
             fields = self.default_form_fields
 
         DynamicModelForm = type(
-            f"{self.model.__name__}Form", # Name for the dynamic form class (e.g., ActivityTemplateForm)
-            (forms.ModelForm,),            # Base classes for the new form
-            {'Meta': Meta}                 # Attributes for the new form (Meta class)
+            f"{self.model.__name__}Form",
+            (forms.ModelForm,),
+            {'Meta': Meta}
         )
 
         return DynamicModelForm
@@ -245,7 +249,7 @@ class BaseTemplateBuilderView(PermissionRequiredMixin, CreateView):
 
     def form_valid(self, form):
         """
-        Handle a valid form submission.
+        Handle a valid form submission for both create and update operations.
         
         Args:
             form: Form instance
@@ -253,20 +257,68 @@ class BaseTemplateBuilderView(PermissionRequiredMixin, CreateView):
         Returns:
             HttpResponse: Response to return
         """
-        # Get the JSON string from the request.POST (from the hidden input field)
+        # Get the JSON string from the request.POST
         template_json_str = self.request.POST.get(self.json_field_name_in_model)
 
         if template_json_str:
             try:
-                setattr(form.instance, self.json_field_name_in_model, json.loads(template_json_str))
-            except json.JSONDecodeError:
-                form.add_error(None, ValidationError(f"Invalid JSON data provided for {self.json_field_name_in_model}."))
+                json_data = json.loads(template_json_str)
+                if not isinstance(json_data, list) or not json_data:
+                    raise json.JSONDecodeError("JSON must be a non-empty array", "", 0)
+                setattr(form.instance, self.json_field_name_in_model, json_data)
+            except json.JSONDecodeError as e:
+                form.add_error(None, ValidationError(
+                    f"Invalid JSON data provided for {self.json_field_name_in_model}: {str(e)}"
+                ))
                 return self.form_invalid(form)
         else:
-            form.add_error(None, ValidationError(f"must have at least one question."))
+            form.add_error(None, ValidationError("Must have at least one question."))
             return self.form_invalid(form)
 
         return super().form_valid(form)
+
+class BaseTemplateUpdateView(BaseTemplateCreateView, UpdateView):
+    """
+    Base view for updating a template.
+    
+    Attributes:
+        model: Model to update
+        actions: List of actions to include in the view
+        template_name: Name of the template to use for rendering
+        table_fields: List of fields to include in the table
+    """
+    def get_permission_required(self):
+        """
+        Get the permission required for this view.
+        Returns different permissions for create vs update operations.
+        
+        Returns:
+            list: List of permissions required
+        """
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name.lower()
+        return [f'{self.app_label}.change_{self.model_name}']
+
+    def get_form_kwargs(self):
+        """
+        Add the instance to form kwargs if this is an update operation.
+        """
+        kwargs = super().get_form_kwargs()
+        if hasattr(self, 'object'):
+            kwargs['instance'] = self.object
+        return kwargs
+    
+    def get_context_data(self, **kwargs):
+        """
+        Add template context data.
+        """
+        context = super().get_context_data(**kwargs)
+        context['object'] = getattr(self, 'object', None)
+        # Ensure the JSON field is available in the template
+        if hasattr(self, 'object') and self.object:
+            context['template_json'] = getattr(self.object, self.json_field_name_in_model, None)
+        return context
+
 
 class BaseListView(PermissionRequiredMixin, ListView):
     """
@@ -361,6 +413,34 @@ class BaseCreateView(PermissionRequiredMixin, CreateView):
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.add_{self.model_name}']
+
+class BaseUpdateView(PermissionRequiredMixin, UpdateView):
+    """
+    Mixin for views that require permission to update an object.
+    
+    Attributes:
+        model: Model to update
+        pk_url_kwarg: Name of the URL keyword argument for the primary key
+        template_name: Name of the template to use for rendering
+    """
+    model = None
+    pk_url_kwarg = 'pk'
+    template_name = 'core/generic_form.html'
+    fields = []
+
+    def get_permission_required(self):
+        """
+        Get the permission required for this view.
+        
+        Returns:
+            list: List of permissions required
+        """
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name.lower()
+        """
+        Dynamically determines the permission required based on the view's model.
+        """
+        return [f'{self.app_label}.change_{self.model_name}']
 
 class BaseDeleteView(PermissionRequiredMixin, DeleteView):
     """

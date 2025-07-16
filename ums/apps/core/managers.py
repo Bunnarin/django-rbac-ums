@@ -45,7 +45,6 @@ class RLSManager(models.Manager):
         """
         queryset = self.get_queryset()
         user = request.user
-        print(request.session.get('selected_faculty'))
         
         # Superusers have full access
         if user.is_superuser:

@@ -69,9 +69,9 @@ class FormTemplateBuilder {
         newQuestionBlock.setAttribute('data-internal-id', `q_${this.questionCounter++}`);
         
         if (Object.keys(fieldDef).length > 0) {
-            newQuestionBlock.querySelector('.question-title').value = fieldDef.title || '';
+            newQuestionBlock.querySelector('.question-title').value = fieldDef.label || '';
             newQuestionBlock.querySelector('.field-type').value = fieldDef.type || 'text';
-            newQuestionBlock.querySelector('.is-required').checked = fieldDef.is_required || false;
+            newQuestionBlock.querySelector('.is-required').checked = fieldDef.required || false;
 
             if (fieldDef.choices !== undefined && Array.isArray(fieldDef.choices)) {
                 newQuestionBlock.querySelector('.field-choices').value = fieldDef.choices.join('\n');

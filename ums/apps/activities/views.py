@@ -1,7 +1,7 @@
 from django.views.generic import ListView, View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from apps.core.views import BaseExportView, BaseTemplateBuilderView, BaseDeleteView, BaseListView
+from apps.core.views import BaseUpdateView, BaseExportView, BaseTemplateCreateView, BaseTemplateUpdateView, BaseDeleteView, BaseListView
 from apps.core.forms import generate_dynamic_form_class
 from apps.organization.models import Faculty
 from .models import Activity, ActivityTemplate
@@ -18,7 +18,7 @@ class ActivityListView(BaseListView):
         table_fields: Fields to display in the activity list
     """
     model = Activity
-    actions = ["add", "export", "delete"]
+    actions = ["add", "export", "delete", "change"]
     table_fields = ['author', 'faculty', 'template']
 
 class ActivityTemplateSelectView(ListView):
@@ -95,12 +95,64 @@ class ActivityCreateView(PermissionRequiredMixin, View):
 
         if form.is_valid():
             faculty_id = request.session.get('selected_faculty')
+            faculty = Faculty.objects.get(id=faculty_id) if faculty_id else None
             Activity.objects.create(
                 template = activity_template,
                 author = request.user,
-                faculty = Faculty.objects.get(id=faculty_id),
+                faculty = faculty,
                 response_json = form.cleaned_data,
             )
+            return redirect('activities:view_activity')
+        else:
+            return render(request, self.template_name, {'form': form})
+
+class ActivityUpdateView(PermissionRequiredMixin, View):
+    """
+    View for updating activities.
+    
+    Extends ActivityCreateView and BaseUpdateView to provide activity update functionality.
+    
+    Attributes:
+        model: The Activity model
+    """
+    model = Activity
+    template_name = 'core/generic_form.html'
+    permission_required = 'activities.add_activity'
+    
+    def get(self, request, pk):
+        activity = get_object_or_404(Activity, pk=pk)
+        template_json = activity.template.template_json
+        response_json = activity.response_json
+        Form = generate_dynamic_form_class(template_json)
+        form = Form(response_json)
+        return render(request, self.template_name, {'form': form})
+    
+    def post(self, request, pk):
+        """
+        Handle POST request for activity creation.
+        
+        Args:
+            request: Django HTTP request object
+            template_pk: Primary key of the selected template
+            
+        Returns:
+            HttpResponse: Redirect to activity list or form with errors
+        """
+        activity = get_object_or_404(Activity, pk=pk)
+        activity_template = activity.template
+        template_json = activity_template.template_json
+        Form = generate_dynamic_form_class(template_json)
+        form = Form(request.POST)
+
+        if form.is_valid():
+            faculty_id = request.session.get('selected_faculty')
+            faculty = Faculty.objects.get(id=faculty_id) if faculty_id else None
+            
+            activity.author = request.user
+            activity.faculty = faculty
+            activity.response_json = form.cleaned_data
+            activity.save()
+            
             return redirect('activities:view_activity')
         else:
             return render(request, self.template_name, {'form': form})
@@ -137,7 +189,7 @@ class ActivityDeleteView(BaseDeleteView):
     """
     model = Activity
 
-class ActivityTemplateCreateView(BaseTemplateBuilderView):
+class ActivityTemplateCreateView(BaseTemplateCreateView):
     """
     View for creating activity templates.
     
@@ -164,8 +216,21 @@ class ActivityTemplateListView(BaseListView):
         table_fields: Fields to display in the template list
     """
     model = ActivityTemplate
-    actions = ["add", "delete"]
+    actions = ["add", "delete", "change"]
     table_fields = ['name']
+
+class ActivityTemplateUpdateView(BaseTemplateUpdateView):
+    """
+    View for updating activity templates.
+    
+    Extends BaseUpdateView to provide template update functionality.
+    
+    Attributes:
+        model: The ActivityTemplate model
+    """
+    model = ActivityTemplate
+    default_form_fields = ['name']
+    json_field_name_in_model = 'template_json'
 
 class ActivityTemplateDeleteView(BaseDeleteView):
     """
