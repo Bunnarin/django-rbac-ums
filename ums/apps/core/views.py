@@ -14,6 +14,19 @@ from django.views.decorators.http import require_POST
 from django.shortcuts import redirect
 
 class BaseExportView(View):
+    """
+    Base view for exporting data to Excel format.
+    
+    This view provides a reusable implementation for exporting model data to Excel files,
+    with support for nested attributes and JSON field extraction.
+    
+    Attributes:
+        model: The Django model class to export from
+        fields_to_export: List of tuples containing field paths and header names
+        filename: Name of the exported Excel file
+        sheet_name: Name of the main data sheet
+        json_fields_to_extract: List of field paths to extract as separate JSON sheets
+    """
     model = None
     fields_to_export = []
     filename = "export.xlsx"
@@ -21,11 +34,27 @@ class BaseExportView(View):
     json_fields_to_extract = []
 
     def get_queryset(self):
+        """
+        Get the queryset for export.
+        
+        Returns:
+            QuerySet: Filtered queryset based on user permissions
+        """
         if hasattr(self.model.objects, "for_user"):
             return self.model.objects.for_user(self.request)
         return super().get_queryset()
 
     def _get_nested_attr(self, obj, attr_path):
+        """
+        Get a nested attribute from an object using dot notation.
+        
+        Args:
+            obj: The object to get attributes from
+            attr_path: String representing the path to the attribute (e.g., 'user.profile.name')
+            
+        Returns:
+            Any: The value of the nested attribute, or None if not found
+        """
         attrs = attr_path.split('.')
         current_obj = obj
         for attr in attrs:
@@ -38,6 +67,15 @@ class BaseExportView(View):
         return current_obj
 
     def _format_value_for_excel(self, value):
+        """
+        Format a value for Excel output.
+        
+        Args:
+            value: The value to format
+            
+        Returns:
+            str: Formatted value suitable for Excel
+        """
         if isinstance(value, (dict, list)):
             return ", ".join(map(str, value))
         elif isinstance(value, datetime):
@@ -56,6 +94,15 @@ class BaseExportView(View):
             return str(value)
 
     def get(self, request, *args, **kwargs):
+        """
+        Handle GET request to export data to Excel.
+        
+        Args:
+            request: Django HTTP request object
+            
+        Returns:
+            HttpResponse: Excel file response
+        """
         queryset = self.get_queryset()
 
         workbook = openpyxl.Workbook()
@@ -147,19 +194,33 @@ class BaseTemplateBuilderView(PermissionRequiredMixin, CreateView):
     """
     Mixin for Django Create/Update Views that handle dynamic JSON field creation
     via a frontend builder.
+    
+    Attributes:
+        default_form_fields: List of fields to include in the form
+        json_field_name_in_model: Name of the JSON field in the model
+        template_name: Name of the template to use for rendering
     """
     default_form_fields = []
     json_field_name_in_model = 'template_json'
     template_name = 'core/template_builder.html'
 
     def get_permission_required(self):
+        """
+        Get the permission required for this view.
+        
+        Returns:
+            list: List of permissions required
+        """
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.add_{self.model_name}']
 
     def get_form_class(self):
         """
-        Dynamically generates a ModelForm class based on the view's 'model' attribute.
+        Get the form class for this view.
+        
+        Returns:
+            type: Form class
         """
         class Meta:
             model = self.model
@@ -174,9 +235,24 @@ class BaseTemplateBuilderView(PermissionRequiredMixin, CreateView):
         return DynamicModelForm
 
     def get_success_url(self):
+        """
+        Get the URL to redirect to after a successful form submission.
+        
+        Returns:
+            str: URL to redirect to
+        """
         return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
 
     def form_valid(self, form):
+        """
+        Handle a valid form submission.
+        
+        Args:
+            form: Form instance
+        
+        Returns:
+            HttpResponse: Response to return
+        """
         # Get the JSON string from the request.POST (from the hidden input field)
         template_json_str = self.request.POST.get(self.json_field_name_in_model)
 
@@ -193,12 +269,27 @@ class BaseTemplateBuilderView(PermissionRequiredMixin, CreateView):
         return super().form_valid(form)
 
 class BaseListView(PermissionRequiredMixin, ListView):
+    """
+    Base view for displaying a list of objects.
+    
+    Attributes:
+        model: Model to display
+        actions: List of actions to include in the view
+        template_name: Name of the template to use for rendering
+        table_fields: List of fields to include in the table
+    """
     model = None
     actions = []
     template_name = 'core/generic_list.html'
     table_fields = []
 
     def get_permission_required(self):
+        """
+        Get the permission required for this view.
+        
+        Returns:
+            list: List of permissions required
+        """
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         user = self.request.user
@@ -208,6 +299,15 @@ class BaseListView(PermissionRequiredMixin, ListView):
         return [f'{self.app_label}.view_{self.model_name}'] # Default to view permission
 
     def get_context_data(self, **kwargs):
+        """
+        Get the context data for this view.
+        
+        Args:
+            **kwargs: Keyword arguments
+        
+        Returns:
+            dict: Context data
+        """
         context = super().get_context_data(**kwargs)
         context['table_headers'] = self.table_fields
         context['table_fields'] = self.table_fields
@@ -228,6 +328,12 @@ class BaseListView(PermissionRequiredMixin, ListView):
         return context
 
     def get_queryset(self):
+        """
+        Get the queryset for this view.
+        
+        Returns:
+            QuerySet: Filtered queryset based on user permissions
+        """
         if hasattr(self.model.objects, "for_user"):
             return self.model.objects.for_user(self.request)
         return super().get_queryset()
@@ -235,27 +341,47 @@ class BaseListView(PermissionRequiredMixin, ListView):
 class BaseCreateView(PermissionRequiredMixin, CreateView):
     """
     Mixin for views that require permission to add an object.
-    Checks if the user has the 'add' permission for the model.
+    
+    Attributes:
+        model: Model to create
+        template_name: Name of the template to use for rendering
+        fields: List of fields to include in the form
     """
     model = None
     template_name = 'core/generic_form.html'
     fields = []
 
     def get_permission_required(self):
+        """
+        Get the permission required for this view.
+        
+        Returns:
+            list: List of permissions required
+        """
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.add_{self.model_name}']
 
 class BaseDeleteView(PermissionRequiredMixin, DeleteView):
     """
-    Mixin for views that require permission to add an object.
-    Checks if the user has the 'add' permission for the model.
+    Mixin for views that require permission to delete an object.
+    
+    Attributes:
+        model: Model to delete
+        pk_url_kwarg: Name of the URL keyword argument for the primary key
+        template_name: Name of the template to use for rendering
     """
     model = None
     pk_url_kwarg = 'pk'
     template_name = 'core/generic_delete.html'
 
     def get_permission_required(self):
+        """
+        Get the permission required for this view.
+        
+        Returns:
+            list: List of permissions required
+        """
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         """
@@ -264,14 +390,35 @@ class BaseDeleteView(PermissionRequiredMixin, DeleteView):
         return [f'{self.app_label}.delete_{self.model_name}']
 
     def get_success_url(self):
+        """
+        Get the URL to redirect to after a successful deletion.
+        
+        Returns:
+            str: URL to redirect to
+        """
         return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
 
     def get_context_data(self, **kwargs):
+        """
+        Get the context data for this view.
+        
+        Args:
+            **kwargs: Keyword arguments
+        
+        Returns:
+            dict: Context data
+        """
         context = super().get_context_data(**kwargs)
         context["cancel_url"] = f'{self.app_label}:view_{self.model_name}'
         return context
 
     def get_queryset(self):
+        """
+        Get the queryset for this view.
+        
+        Returns:
+            QuerySet: Filtered queryset based on user permissions
+        """
         if hasattr(self.model.objects, "for_user"):
             return self.model.objects.for_user(self.request)
         return super().get_queryset()
@@ -279,6 +426,15 @@ class BaseDeleteView(PermissionRequiredMixin, DeleteView):
 @csrf_exempt
 @require_POST
 def set_faculty(request):
+    """
+    Set the selected faculty for the user.
+    
+    Args:
+        request: Django HTTP request object
+    
+    Returns:
+        JsonResponse: Response with success or error message
+    """
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
     
@@ -301,6 +457,15 @@ def set_faculty(request):
 @csrf_exempt
 @require_POST
 def set_program(request):
+    """
+    Set the selected program for the user.
+    
+    Args:
+        request: Django HTTP request object
+    
+    Returns:
+        JsonResponse: Response with success or error message
+    """
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
     

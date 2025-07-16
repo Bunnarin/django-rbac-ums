@@ -2,3 +2,5 @@
 
 coverage==5.1
 django-debug-toolbar==2.2
+interrogate==1.7.0
+pytest-django==4.11.1

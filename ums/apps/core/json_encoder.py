@@ -3,6 +3,9 @@ import json
 from datetime import date, datetime
 
 class CustomJSONEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder that extends the default JSON encoder to handle date and datetime objects.
+    """
     def default(self, obj):
         if isinstance(obj, (date, datetime)):
             return obj.isoformat() # Converts date/datetime to ISO 8601 string (e.g., "2025-06-28")

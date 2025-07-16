@@ -4,6 +4,18 @@ def generate_dynamic_form_class(json_template, form_name="DynamicForm"):
     """
     Generates a Django Form class based on a list of question dictionaries.
     Each dictionary defines a form field.
+
+    Args:
+        json_template: List of dictionaries, where each dictionary defines a form field
+            Each dictionary should contain:
+            - type: String indicating the field type (text, paragraph, integer, etc.)
+            - label: Display label for the field
+            - required: Boolean indicating if the field is required
+            - choices: Optional list of choices for dropdown/checkbox fields
+        form_name: Name of the generated form class (default: "DynamicForm")
+    
+    Returns:
+        type: New Django Form class with fields defined by the template
     """
     form_fields = {}
 
