@@ -22,7 +22,7 @@ class CustomGroupAdmin(admin.ModelAdmin):
 
     def formfield_for_manytomany(self, db_field, request=None, **kwargs):
         """
-        overrode this method to filter permissions based on user's own permissions
+        this just does some logic and modify the kwargs before passing it to the super
         """
         if db_field.name == "permissions":
             if request and not request.user.is_superuser:
@@ -33,8 +33,8 @@ class CustomGroupAdmin(admin.ModelAdmin):
                 allowed_permissions_qs = (user_perms_direct | user_perms_via_groups).distinct()
 
                 extended_permissions_qs = Permission.objects.filter(
-                    Q(content_type__app_label='users', codename="access_faculty_wide") |
-                    Q(content_type__app_label='users', codename="access_program_wide")
+                    Q(codename="access_faculty_wide") |
+                    Q(codename="access_program_wide")
                 ).distinct()
 
                 if user.has_perm("users.access_global") or user.has_perm("users.access_faculty_wide"):
@@ -46,25 +46,26 @@ class CustomGroupAdmin(admin.ModelAdmin):
 
         return super().formfield_for_manytomany(db_field, request=request, **kwargs)
 
-# Unregister default EmailAddress admin since we don't need it
+# Unregister default allauth email admin since we don't need it
 admin.site.unregister(EmailAddress)
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
     """
-    Improved the defualt user admin to be cleaner
+    Improved the defualt user admin to be cleaner and validate the affiliation
     """
     add_form = CustomUserAdminForm
     form = CustomUserAdminForm
 
-    list_display = ('username', 'is_staff',)
-    list_filter = ('is_staff', 'faculties','programs','groups','is_active')
+    list_display = ('username', 'user_type',)
+    list_filter = ('user_type', 'faculties','programs','groups','is_active')
     search_fields = ('email','username','first_name','last_name','phone_number')
 
+    # tried moving this to the form logic but it doesn't work for some reason
     add_fieldsets = (
         ('Authentication', {'fields': ('username','email','phone_number')}),
         ('Personal Information', {'fields': ('first_name','last_name')}),
-        ('Affiliations', {'fields': ('faculties','programs')}),
+        ('Affiliations', {'fields': ('faculties','programs','user_type')}),
         ('Permissions', {'fields': ('is_active','is_staff','groups')}),
     )
 

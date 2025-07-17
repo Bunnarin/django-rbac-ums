@@ -1,16 +1,14 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from apps.organization.models import Faculty
+from .models import CustomUser
 
 class CustomUserAdminForm(forms.ModelForm):
     """
-    Custom form to validate affiliation
+    Custom form to validate that all selected programs' faculties are included in assigned faculties.
     """
-
+    
     def clean(self):
-        """
-        Validate that all selected programs' faculties are included in assigned faculties.
-        """
         cleaned_data = super().clean()
         faculties = cleaned_data.get('faculties')
         programs = cleaned_data.get('programs')

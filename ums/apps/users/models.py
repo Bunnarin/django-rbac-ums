@@ -7,6 +7,13 @@ class CustomUser(OrganizationsNullMixin, AbstractUser):
     email = models.EmailField("email address", unique=True, blank=True, null=True)
     phone_number = PhoneNumberField(max_length=16, unique=True, blank=True, null=True)
 
+    class UserTypes(models.IntegerChoices):
+        STUDENT = 0, 'Student'
+        PROFESSOR = 1, 'Professor'
+        STAFF = 2, 'Staff'
+
+    user_type = models.IntegerField(choices=UserTypes.choices, default=UserTypes.STAFF)
+
     def __str__(self):
         return self.username
 
