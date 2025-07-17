@@ -2,17 +2,23 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from phonenumber_field.modelfields import PhoneNumberField
 from apps.organization.mixins import OrganizationsNullMixin
+from .managers import StudentManager, ProfessorManager, StaffManager
+
+class UserTypes(models.IntegerChoices):
+        STUDENT = 0, 'Student'
+        PROFESSOR = 1, 'Professor'
+        STAFF = 2, 'Staff'
 
 class CustomUser(OrganizationsNullMixin, AbstractUser):
     email = models.EmailField("email address", unique=True, blank=True, null=True)
     phone_number = PhoneNumberField(max_length=16, unique=True, blank=True, null=True)
 
-    class UserTypes(models.IntegerChoices):
-        STUDENT = 0, 'Student'
-        PROFESSOR = 1, 'Professor'
-        STAFF = 2, 'Staff'
-
     user_type = models.IntegerField(choices=UserTypes.choices, default=UserTypes.STAFF)
+
+    objects = models.Manager()
+    students = StudentManager()
+    professors = ProfessorManager()
+    staffs = StaffManager()
 
     def __str__(self):
         return self.username
@@ -35,3 +41,6 @@ class CustomUser(OrganizationsNullMixin, AbstractUser):
             ("access_faculty_wide", "Faculty Wide Access"),
             ("access_program_wide", "Program Wide Access"),
         ]
+        permissions += [(f'{action}_{user_type[1].lower()}', f'Can {action} {user_type[1]}') 
+                        for user_type in UserTypes.choices 
+                        for action in ["view", "add", "change", "delete"]]
