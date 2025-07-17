@@ -37,11 +37,6 @@ class RLSManager(models.Manager):
             - Program access: Filtered by selected program (if user has program-wide permission)
             - Row-level: Filtered by model's get_user_rls_filter (if model inherits UserRLSMixin)
             - Default: Empty queryset if no matching permissions found
-            
-        Notes:
-            - Validates that selected faculty/program belongs to user's faculties/programs
-            - Returns empty queryset if invalid faculty/program ID is provided
-            - Session keys used: 'selected_faculty' and 'selected_program'
         """
         queryset = self.get_queryset()
         user = request.user
@@ -57,30 +52,12 @@ class RLSManager(models.Manager):
         # Faculty-wide access check
         if hasattr(self.model, 'faculty') and user.has_perm('users.access_faculty_wide'):
             faculty_id = request.session.get('selected_faculty')
-            if faculty_id:
-                try:
-                    faculty_id = int(faculty_id)
-                    # Validate that the faculty is in user's faculties
-                    if faculty_id in user.faculties.values_list('id', flat=True):
-                        return queryset.filter(faculty_id=faculty_id)
-                    return queryset.none()
-                except (ValueError, TypeError):
-                    return queryset.none()
-            return queryset.none()
+            return queryset.filter(faculty_id=faculty_id)
 
         # Program-wide access check
         if hasattr(self.model, 'program') and user.has_perm('users.access_program_wide'):
             program_id = request.session.get('selected_program')
-            if program_id:
-                try:
-                    program_id = int(program_id)
-                    # Validate that the program is in user's programs
-                    if program_id in user.programs.values_list('id', flat=True):
-                        return queryset.filter(program_id=program_id)
-                    return queryset.none()
-                except (ValueError, TypeError):
-                    return queryset.none()
-            return queryset.none()
+            return queryset.filter(program_id=program_id)
 
         # Row-level security check (via UserRLSMixin)
         if issubclass(self.model, UserRLSMixin):

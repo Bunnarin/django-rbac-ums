@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 class CustomJSONEncoder(json.JSONEncoder):
     """
-    Custom JSON encoder that extends the default JSON encoder to handle date and datetime objects.
+    This extends the default JSON encoder to handle date and datetime objects.
     """
     def default(self, obj):
         if isinstance(obj, (date, datetime)):

@@ -3,7 +3,6 @@ from django import forms
 def generate_dynamic_form_class(json_template, form_name="DynamicForm"):
     """
     Generates a Django Form class based on a list of question dictionaries.
-    Each dictionary defines a form field.
 
     Args:
         json_template: List of dictionaries, where each dictionary defines a form field

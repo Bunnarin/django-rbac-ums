@@ -503,7 +503,6 @@ class BaseDeleteView(PermissionRequiredMixin, DeleteView):
             return self.model.objects.for_user(self.request)
         return super().get_queryset()
 
-@csrf_exempt
 @require_POST
 def set_faculty(request):
     """
@@ -534,7 +533,6 @@ def set_faculty(request):
     
     return JsonResponse({'success': False, 'error': 'No faculty ID provided'}, status=400)
 
-@csrf_exempt
 @require_POST
 def set_program(request):
     """
