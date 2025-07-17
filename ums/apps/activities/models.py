@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models import Q
 from apps.core.json_encoder import CustomJSONEncoder
 from apps.core.managers import RLSManager
-from apps.core.mixins import TimestampMixin, AuthorMixin, UserRLSMixin
+from apps.core.mixins import TimestampMixin, AuthorMixin
 from apps.organization.mixins import FacultyNullMixin
 
 # Create your models here.
@@ -28,19 +28,9 @@ class ActivityTemplate(models.Model):
     def __str__(self): 
         return self.name
 
-class Activity(TimestampMixin, AuthorMixin, FacultyNullMixin, UserRLSMixin):
+class Activity(TimestampMixin, AuthorMixin, FacultyNullMixin):
     """
     Stores user responses to activity templates with row-level security.
-    
-    Inherits from:
-        TimestampMixin: Adds created_at and updated_at fields
-        AuthorMixin: Adds author field
-        FacultyNullMixin: Adds faculty field that can be null
-        UserRLSMixin: Adds row-level security functionality
-    
-    Attributes:
-        template: ForeignKey to ActivityTemplate
-        response_json: JSON field storing user responses
     """
     template = models.ForeignKey(ActivityTemplate, null=True, on_delete=models.SET_NULL)
     response_json = models.JSONField(encoder=CustomJSONEncoder, default=dict)
@@ -48,19 +38,10 @@ class Activity(TimestampMixin, AuthorMixin, FacultyNullMixin, UserRLSMixin):
     objects = RLSManager()
 
     def get_user_rls_filter(self, user):
-        """
-        Get the row-level security filter for this activity.
-        
-        Args:
-            user: The user to filter by
-            
-        Returns:
-            Q: Django Q object representing the filter
-        """
         return Q(author=user)
 
     def __str__(self): 
-        return f"activity created by {self.author} and updated on {self.updated_at}"
+        return f"{self.template.name} activity created by {self.author} on {self.created_at.strftime('%Y-%m-%d')}"
 
     class Meta:
         verbose_name_plural = "Activities"

@@ -2,12 +2,13 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from phonenumber_field.modelfields import PhoneNumberField
 from apps.organization.mixins import OrganizationsNullMixin
+from apps.core.managers import RLSManager
 from .managers import StudentManager, ProfessorManager, StaffManager
 
 class UserTypes(models.IntegerChoices):
-        STUDENT = 0, 'Student'
-        PROFESSOR = 1, 'Professor'
-        STAFF = 2, 'Staff'
+    STUDENT = 0, 'Student'
+    PROFESSOR = 1, 'Professor'
+    STAFF = 2, 'Staff'
 
 class CustomUser(OrganizationsNullMixin, AbstractUser):
     email = models.EmailField("email address", unique=True, blank=True, null=True)
@@ -15,13 +16,16 @@ class CustomUser(OrganizationsNullMixin, AbstractUser):
 
     user_type = models.IntegerField(choices=UserTypes.choices, default=UserTypes.STAFF)
 
-    objects = models.Manager()
+    objects = RLSManager()
     students = StudentManager()
     professors = ProfessorManager()
     staffs = StaffManager()
 
     def __str__(self):
         return self.username
+    
+    def get_user_rls_filter(self, user):
+        return Q(username=user.username)
 
     def save(self, *args, **kwargs):
         """
