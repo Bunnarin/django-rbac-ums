@@ -5,16 +5,11 @@ from apps.organization.mixins import OrganizationsNullMixin
 from apps.core.managers import RLSManager
 from .managers import StudentManager, ProfessorManager, StaffManager
 
-class UserTypes(models.IntegerChoices):
-    STUDENT = 0, 'Student'
-    PROFESSOR = 1, 'Professor'
-    STAFF = 2, 'Staff'
-
 class CustomUser(OrganizationsNullMixin, AbstractUser):
     email = models.EmailField("email address", unique=True, blank=True, null=True)
     phone_number = PhoneNumberField(max_length=16, unique=True, blank=True, null=True)
-
-    user_type = models.IntegerField(choices=UserTypes.choices, default=UserTypes.STAFF)
+    is_student = models.BooleanField("student status", default=False)
+    is_professor = models.BooleanField("professor status", default=False)
 
     objects = RLSManager()
     students = StudentManager()
@@ -45,6 +40,6 @@ class CustomUser(OrganizationsNullMixin, AbstractUser):
             ("access_faculty_wide", "Faculty Wide Access"),
             ("access_program_wide", "Program Wide Access"),
         ]
-        permissions += [(f'{action}_{user_type[1].lower()}', f'Can {action} {user_type[1]}') 
-                        for user_type in UserTypes.choices 
+        permissions += [(f'{action}_{user_type.lower()}', f'Can {action} {user_type}') 
+                        for user_type in ["Student", "Professor", "Staff"]
                         for action in ["view", "add", "change", "delete"]]

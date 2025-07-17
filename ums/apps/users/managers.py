@@ -5,24 +5,24 @@ from django.conf import settings
 user = settings.AUTH_USER_MODEL
 class StudentManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(user_type=user.UserTypes.STUDENT)
+        return super().get_queryset().filter(is_student=True)
 
     def create(self, *args, **kwargs):
-        kwargs['user_type'] = user.UserTypes.STUDENT
+        kwargs['is_student'] = True
         return super().create(*args, **kwargs)
 
 class ProfessorManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(user_type=user.UserTypes.PROFESSOR)
+        return super().get_queryset().filter(is_professor=True)
 
     def create(self, *args, **kwargs):
-        kwargs['user_type'] = user.UserTypes.PROFESSOR
+        kwargs['is_professor'] = True
         return super().create(*args, **kwargs)
 
 class StaffManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(user_type=user.UserTypes.STAFF)
+        return super().get_queryset().filter(is_staff=True)
 
     def create(self, *args, **kwargs):
-        kwargs['user_type'] = user.UserTypes.STAFF
+        kwargs['is_staff'] = True
         return super().create(*args, **kwargs)

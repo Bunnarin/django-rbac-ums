@@ -57,16 +57,16 @@ class CustomUserAdmin(UserAdmin):
     add_form = CustomUserAdminForm
     form = CustomUserAdminForm
 
-    list_display = ('username', 'user_type',)
-    list_filter = ('user_type', 'faculties','programs','groups','is_active')
+    list_display = ('username', 'is_student', 'is_professor', 'is_staff',)
+    list_filter = ('is_student', 'is_professor', 'is_staff', 'faculties','programs','groups','is_active')
     search_fields = ('email','username','first_name','last_name','phone_number')
 
     # tried moving this to the form logic but it doesn't work for some reason
     add_fieldsets = (
         ('Authentication', {'fields': ('username','email','phone_number')}),
         ('Personal Information', {'fields': ('first_name','last_name')}),
-        ('Affiliations', {'fields': ('faculties','programs','user_type')}),
-        ('Permissions', {'fields': ('is_active','is_staff','groups')}),
+        ('Affiliations', {'fields': ('faculties','programs')}),
+        ('Permissions', {'fields': ('is_active','is_staff','is_student','is_professor','groups')}),
     )
 
     fieldsets = add_fieldsets
