@@ -1,7 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from apps.organization.models import Faculty
-from .models import CustomUser
 
 class CustomUserAdminForm(forms.ModelForm):
     """

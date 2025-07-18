@@ -1,8 +1,8 @@
 from django.db import models
 from django.db.models import Q
+from django.conf import settings
 from apps.core.json_encoder import CustomJSONEncoder
 from apps.core.managers import RLSManager
-from apps.core.mixins import TimestampMixin, AuthorMixin
 from apps.organization.mixins import FacultyNullMixin
 
 # Create your models here.
@@ -28,12 +28,15 @@ class ActivityTemplate(models.Model):
     def __str__(self): 
         return self.name
 
-class Activity(TimestampMixin, AuthorMixin, FacultyNullMixin):
+class Activity(FacultyNullMixin):
     """
     Stores user responses to activity templates with row-level security.
     """
     template = models.ForeignKey(ActivityTemplate, null=True, on_delete=models.SET_NULL)
     response_json = models.JSONField(encoder=CustomJSONEncoder, default=dict)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Last Updated At")
 
     objects = RLSManager()
 

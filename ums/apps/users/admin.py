@@ -3,7 +3,7 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.admin import UserAdmin
 from django.db.models import Q
 from allauth.account.models import EmailAddress
-from .models import CustomUser
+from .models import CustomUser, Professor, Student, Staff
 from .forms import CustomUserAdminForm
 
 # Unregister default Group admin to replace with custom version
@@ -52,21 +52,35 @@ admin.site.unregister(EmailAddress)
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
     """
-    Improved the defualt user admin to be cleaner and validate the affiliation
+    Improved the defualt user admin to be cleaner and validate the affiliation during creation 
+    because we can't do that for manytomany field in model save() method
     """
     add_form = CustomUserAdminForm
-    form = CustomUserAdminForm
 
-    list_display = ('username', 'is_student', 'is_professor', 'is_staff',)
-    list_filter = ('is_student', 'is_professor', 'is_staff', 'faculties','programs','groups','is_active')
+    list_display = ('username', 'is_staff',)
+    list_filter = ('is_staff', 'faculties','programs','groups','is_active')
     search_fields = ('email','username','first_name','last_name','phone_number')
 
-    # tried moving this to the form logic but it doesn't work for some reason
     add_fieldsets = (
         ('Authentication', {'fields': ('username','email','phone_number')}),
         ('Personal Information', {'fields': ('first_name','last_name')}),
         ('Affiliations', {'fields': ('faculties','programs')}),
-        ('Permissions', {'fields': ('is_active','is_staff','is_student','is_professor','groups')}),
+        ('Permissions', {'fields': ('is_active','is_staff','groups')}),
     )
 
     fieldsets = add_fieldsets
+
+@admin.register(Professor)
+class ProfessorAdmin(admin.ModelAdmin):
+    list_display = ('user', 'faculty', 'program')
+    list_filter = ('faculty', 'program')
+
+@admin.register(Student)
+class StudentAdmin(admin.ModelAdmin):
+    list_display = ('user', 'faculty', 'program')
+    list_filter = ('faculty', 'program')
+
+@admin.register(Staff)
+class StaffAdmin(admin.ModelAdmin):
+    list_display = ('user', 'faculty', 'program')
+    list_filter = ('faculty', 'program')

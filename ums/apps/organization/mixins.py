@@ -5,16 +5,6 @@ from .models import Faculty, Program
 class OrganizationMixin(models.Model):
     """
     Abstract base class for models that require both faculty and program relationships.
-    
-    Provides required relationships to Faculty and Program models with validation
-    to ensure program belongs to the selected faculty.
-    
-    Attributes:
-        faculty: Required ForeignKey to Faculty model
-        program: Required ForeignKey to Program model
-    
-    Methods:
-        clean(): Validates that the selected program belongs to the selected faculty
     """
     faculty = models.ForeignKey(Faculty, on_delete=models.PROTECT,)
     program = models.ForeignKey(Program, on_delete=models.PROTECT,)
@@ -22,14 +12,10 @@ class OrganizationMixin(models.Model):
     def clean(self):
         """
         Validate that the selected program belongs to the selected faculty.
-        
-        Raises:
-            ValidationError: If the program does not belong to the selected faculty
         """
         super().clean()
-        if self.program and self.faculty:
-            if self.faculty != self.program.faculty:
-                raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
+        if self.faculty != self.program.faculty:
+            raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
     
     class Meta:
         abstract = True
@@ -37,15 +23,6 @@ class OrganizationMixin(models.Model):
 class OrganizationNullMixin(models.Model):
     """
     Abstract base class for models that require optional faculty and program relationships.
-    
-    Similar to OrganizationMixin but allows null values for faculty and program.
-    
-    Attributes:
-        faculty: Optional ForeignKey to Faculty model
-        program: Optional ForeignKey to Program model
-    
-    Methods:
-        clean(): Validates that the selected program belongs to the selected faculty
     """
     faculty = models.ForeignKey(
         Faculty,
@@ -75,12 +52,6 @@ class OrganizationNullMixin(models.Model):
 class FacultyMixin(models.Model):
     """
     Abstract base class for models that require a faculty relationship.
-    
-    Provides a required relationship to the Faculty model. Uses PROTECT
-    on delete to maintain referential integrity.
-    
-    Attributes:
-        faculty: Required ForeignKey to Faculty model
     """
     faculty = models.ForeignKey(Faculty, on_delete=models.PROTECT)
 
@@ -89,12 +60,7 @@ class FacultyMixin(models.Model):
 
 class FacultyNullMixin(models.Model):
     """
-    Abstract base class for models that require an optional faculty relationship.
-    
-    Provides an optional relationship to the Faculty model that can be null.
-    
-    Attributes:
-        faculty: Optional ForeignKey to Faculty model
+    Abstract base class for models that needs optional faculty relationship.
     """
     faculty = models.ForeignKey(
         Faculty,
@@ -106,14 +72,24 @@ class FacultyNullMixin(models.Model):
     class Meta:
         abstract = True
 
+class ProgramNullMixin(models.Model):
+    """
+    Abstract base class for models that needs optional program relationship.
+    """
+    faculty = models.ForeignKey(Faculty, on_delete=models.PROTECT)
+    program = models.ForeignKey(Program, null=True, blank=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        abstract = True
+
+    def clean(self):
+        super().clean()
+        if self.program and self.faculty != self.program.faculty:
+            raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
+
 class FacultiesNullMixin(models.Model):
     """
-    Abstract base class for models that require multiple faculty relationships.
-    
-    Provides a ManyToMany relationship to the Faculty model that can be empty.
-    
-    Attributes:
-        faculties: ManyToManyField to Faculty model
+    Abstract base class for models that needs optional multiple faculty relationships.
     """
     faculties = models.ManyToManyField(Faculty, blank = True,)
 
@@ -122,13 +98,26 @@ class FacultiesNullMixin(models.Model):
 
 class OrganizationsNullMixin(FacultiesNullMixin):
     """
-    Abstract base class for models that require multiple faculty and program relationships.
-    
-    Attributes:
-        faculties: ManyToManyField to Faculty model (inherited)
-        programs: ManyToManyField to Program model
+    Abstract base class for models that needs optional multiple faculty and program relationships.
     """
     programs = models.ManyToManyField(Program, blank = True)
 
     class Meta:
         abstract = True
+    
+    def clean(self):
+        super().clean()
+        if not self.pk:
+            # because we can't access manytomany field during creation. this logic have to be in the form
+            return
+        faculties = self.faculties.all()
+        programs = self.programs.all()
+        if faculties and programs:
+            program_faculties = Faculty.objects.filter(
+                program__in=programs
+            ).distinct()
+            missing_faculties = program_faculties.exclude(id__in=[f.id for f in faculties])
+            if missing_faculties.exists():
+                raise ValidationError({
+                    'programs': f"The selected programs include faculties that are not in the assigned faculties: {', '.join(str(f) for f in missing_faculties)}"
+                })

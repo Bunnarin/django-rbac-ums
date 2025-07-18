@@ -15,7 +15,7 @@
                 document.getElementById('faculty-form').submit();
             });
         {% endif %}
-        {% if not request.session.selected_program and user.programs.exists %}
+        {% if not request.session.selected_program and user.programs.exists and request.session.selected_faculty %}
             document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('program-form').submit();
             });
@@ -35,7 +35,7 @@
             <div class="d-flex align-items-center gap-3">
                 <!-- Faculty and Program selects -->
                 <div class="d-flex gap-2">
-                    <form method="POST" action="{% url 'core:set_faculty' %}" id="faculty-form">
+                    <form method="PUT" action="{% url 'core:set_faculty' %}" id="faculty-form">
                         {% csrf_token %}
                         <select name="faculty_id" class="form-select" onchange="this.form.submit()">
                             {% for faculty in user.faculties.all %}
@@ -47,14 +47,16 @@
                         </select>
                     </form>
     
-                    <form method="POST" action="{% url 'core:set_program' %}" id="program-form">
+                    <form method="PUT" action="{% url 'core:set_program' %}" id="program-form">
                         {% csrf_token %}
                         <select name="program_id" class="form-select" onchange="this.form.submit()">
                             {% for program in user.programs.all %}
-                                <option value="{{ program.id }}" 
-                                    {% if program.id == request.session.selected_program %}selected{% endif %}>
-                                    {{ program.name }}
-                                </option>
+                                {% if program.faculty_id == request.session.selected_faculty %}
+                                    <option value="{{ program.id }}" 
+                                        {% if program.id == request.session.selected_program %}selected{% endif %}>
+                                        {{ program.name }}
+                                    </option>
+                                {% endif %}
                             {% endfor %}
                         </select>
                     </form>

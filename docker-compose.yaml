@@ -5,13 +5,12 @@ services:
       - postgresql-db:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    env_file: "docker.env"
     environment:
-      POSTGRES_USER: ums_user
-      POSTGRES_PASSWORD: 159357
-      POSTGRES_DB: ums_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ums_user -d ums_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,7 +21,6 @@ services:
     volumes:
       - ./:/app
       - ./staticfiles:/app/staticfiles
-    env_file: "docker.env"
     ports:
       - "8000:8000"
     depends_on:

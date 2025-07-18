@@ -507,12 +507,6 @@ class BaseDeleteView(PermissionRequiredMixin, DeleteView):
 def set_faculty(request):
     """
     Set the selected faculty for the user.
-    
-    Args:
-        request: Django HTTP request object
-    
-    Returns:
-        JsonResponse: Response with success or error message
     """
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
@@ -537,12 +531,6 @@ def set_faculty(request):
 def set_program(request):
     """
     Set the selected program for the user.
-    
-    Args:
-        request: Django HTTP request object
-    
-    Returns:
-        JsonResponse: Response with success or error message
     """
     if not request.user.is_authenticated:
         return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
