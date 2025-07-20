@@ -8,5 +8,6 @@ urlpatterns = [
     path('session/', include('apps.core.urls')),
     path('accounts/', include('allauth.urls')),
     path('activities/', include('apps.activities.urls')),
+    path('users/', include('apps.users.urls')),
     path('', home_view, name='home'),
 ]

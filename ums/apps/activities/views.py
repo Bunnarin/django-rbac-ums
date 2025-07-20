@@ -1,7 +1,7 @@
 from django.views.generic import ListView, View
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from apps.core.views import BaseUpdateView, BaseExportView, BaseTemplateCreateView, BaseTemplateUpdateView, BaseDeleteView, BaseListView
+from apps.core.views import BaseExportView, BaseTemplateCreateView, BaseTemplateUpdateView, BaseDeleteView, BaseListView
 from apps.core.forms import generate_dynamic_form_class
 from apps.organization.models import Faculty
 from .models import Activity, ActivityTemplate
@@ -61,16 +61,6 @@ class ActivityCreateView(PermissionRequiredMixin, View):
     permission_required = 'activities.add_activity'
 
     def get(self, request, template_pk):
-        """
-        Handle GET request for activity creation.
-        
-        Args:
-            request: Django HTTP request object
-            template_pk: Primary key of the selected template
-            
-        Returns:
-            HttpResponse: Rendered form template
-        """
         activity_template = get_object_or_404(ActivityTemplate, pk=template_pk)
         template_json = activity_template.template_json
         Form = generate_dynamic_form_class(template_json)

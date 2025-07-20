@@ -4,7 +4,7 @@ from django.contrib.auth.models import Group
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from apps.organization.mixins import ProgramNullMixin
-from .managers import UserRLSManager
+from apps.core.managers import RLSManager
 
 class ProfileMixin(ProgramNullMixin):
     """
@@ -14,29 +14,28 @@ class ProfileMixin(ProgramNullMixin):
     """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
-    objects = UserRLSManager()
+    objects = RLSManager()
 
     class Meta:
         abstract = True
 
     def __str__(self):
-        return self.user.username
+        return self.user.__str__()
 
-    def clean(self):
-        """
-        ensure that the user doesn't have a profile for this faculty and program
-        """
-        super().clean()        
-        if self.__class__.objects.filter(user=self.user, faculty=self.faculty, program=self.program).exists():
-            raise ValidationError("This user already has a profile for this faculty and program.")
-
-    def save(self, *args, **kwargs):        
-        profile_group, _ = Group.objects.get_or_create(name=f"ALL {self.__class__.__name__}")
+    def save(self, *args, **kwargs):   
+        # put this in here bcuz clean is too early and soemtime we inject the affiliation during form_valid  
+        creation = not self.pk
+        if creation:
+            duplicated = self.__class__.objects.filter(user=self.user, faculty=self.faculty, program=self.program).exists()
+            if duplicated:
+                raise ValidationError("This user already has a profile for this faculty and program.")
+        
+        profile_group, _ = Group.objects.get_or_create(name=f"ALL {self.__class__.__name__.upper()}")
         self.user.groups.add(profile_group)
         super().save(*args, **kwargs)
     
     def delete(self, *args, **kwargs):
-        profile_group = Group.objects.get(name=f"ALL {self.__class__.__name__}")
+        profile_group = Group.objects.get(name=f"ALL {self.__class__.__name__.upper()}")
         self.user.groups.remove(profile_group)
         super().delete(*args, **kwargs)
 

@@ -9,9 +9,9 @@ from django.http import HttpResponse, JsonResponse
 from django.views.generic import View, ListView, DeleteView, CreateView, UpdateView
 from django.utils import timezone
 from django.contrib.auth.mixins import PermissionRequiredMixin
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.shortcuts import redirect
+from apps.organization.models import Faculty, Program
 
 class BaseExportView(View):
     """
@@ -96,12 +96,6 @@ class BaseExportView(View):
     def get(self, request, *args, **kwargs):
         """
         Handle GET request to export data to Excel.
-        
-        Args:
-            request: Django HTTP request object
-            
-        Returns:
-            HttpResponse: Excel file response
         """
         queryset = self.get_queryset()
 
@@ -111,16 +105,16 @@ class BaseExportView(View):
         main_sheet = workbook.active
         main_sheet.title = self.sheet_name
 
-        main_sheet_headers = [header for _, header in self.fields_to_export]
+        main_sheet_headers = [header for header in self.fields_to_export]
         main_sheet.append(main_sheet_headers)
 
         # --- Determine Context Headers for JSON Sheets ---
         json_context_fields_paths = []
         json_context_headers = []
-        for field_path, header_name in self.fields_to_export:
-            if field_path not in self.json_fields_to_extract:
-                json_context_fields_paths.append(field_path)
-                json_context_headers.append(header_name)
+        for header in self.fields_to_export:
+            if header not in self.json_fields_to_extract:
+                json_context_fields_paths.append(header)
+                json_context_headers.append(header)
 
         # --- JSON Data Sheets Management ---
         json_schema_sheets_data = {}
@@ -137,7 +131,7 @@ class BaseExportView(View):
                 obj_json_context_values.append(self._format_value_for_excel(value))
 
             # Now, process all fields for the main sheet and extract JSON data for separate sheets
-            for field_path, _ in self.fields_to_export:
+            for field_path in self.fields_to_export:
                 value = self._get_nested_attr(obj, field_path)
 
                 # Always add the raw (formatted) value to the main sheet
@@ -208,13 +202,6 @@ class BaseTemplateCreateView(PermissionRequiredMixin, CreateView):
     model = None
 
     def get_permission_required(self):
-        """
-        Get the permission required for this view.
-        Returns different permissions for create vs update operations.
-        
-        Returns:
-            list: List of permissions required
-        """
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.add_{self.model_name}']
@@ -239,23 +226,11 @@ class BaseTemplateCreateView(PermissionRequiredMixin, CreateView):
         return DynamicModelForm
 
     def get_success_url(self):
-        """
-        Get the URL to redirect to after a successful form submission.
-        
-        Returns:
-            str: URL to redirect to
-        """
         return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
 
     def form_valid(self, form):
         """
         Handle a valid form submission for both create and update operations.
-        
-        Args:
-            form: Form instance
-        
-        Returns:
-            HttpResponse: Response to return
         """
         # Get the JSON string from the request.POST
         template_json_str = self.request.POST.get(self.json_field_name_in_model)
@@ -280,21 +255,8 @@ class BaseTemplateCreateView(PermissionRequiredMixin, CreateView):
 class BaseTemplateUpdateView(BaseTemplateCreateView, UpdateView):
     """
     Base view for updating a template.
-    
-    Attributes:
-        model: Model to update
-        actions: List of actions to include in the view
-        template_name: Name of the template to use for rendering
-        table_fields: List of fields to include in the table
     """
     def get_permission_required(self):
-        """
-        Get the permission required for this view.
-        Returns different permissions for create vs update operations.
-        
-        Returns:
-            list: List of permissions required
-        """
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.change_{self.model_name}']
@@ -304,8 +266,7 @@ class BaseTemplateUpdateView(BaseTemplateCreateView, UpdateView):
         Add the instance to form kwargs if this is an update operation.
         """
         kwargs = super().get_form_kwargs()
-        if hasattr(self, 'object'):
-            kwargs['instance'] = self.object
+        kwargs['instance'] = self.object
         return kwargs
     
     def get_context_data(self, **kwargs):
@@ -315,8 +276,7 @@ class BaseTemplateUpdateView(BaseTemplateCreateView, UpdateView):
         context = super().get_context_data(**kwargs)
         context['object'] = getattr(self, 'object', None)
         # Ensure the JSON field is available in the template
-        if hasattr(self, 'object') and self.object:
-            context['template_json'] = getattr(self.object, self.json_field_name_in_model, None)
+        context['template_json'] = getattr(self.object, self.json_field_name_in_model, None)
         return context
 
 
@@ -338,9 +298,6 @@ class BaseListView(PermissionRequiredMixin, ListView):
     def get_permission_required(self):
         """
         Get the permission required for this view.
-        
-        Returns:
-            list: List of permissions required
         """
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
@@ -351,15 +308,6 @@ class BaseListView(PermissionRequiredMixin, ListView):
         return [f'{self.app_label}.view_{self.model_name}'] # Default to view permission
 
     def get_context_data(self, **kwargs):
-        """
-        Get the context data for this view.
-        
-        Args:
-            **kwargs: Keyword arguments
-        
-        Returns:
-            dict: Context data
-        """
         context = super().get_context_data(**kwargs)
         context['table_headers'] = self.table_fields
         context['table_fields'] = self.table_fields
@@ -380,128 +328,69 @@ class BaseListView(PermissionRequiredMixin, ListView):
         return context
 
     def get_queryset(self):
-        """
-        Get the queryset for this view.
-        
-        Returns:
-            QuerySet: Filtered queryset based on user permissions
-        """
         if hasattr(self.model.objects, "for_user"):
             return self.model.objects.for_user(self.request)
         return super().get_queryset()
 
-class BaseCreateView(PermissionRequiredMixin, CreateView):
+class BaseWriteView(PermissionRequiredMixin):
+    """
+    Mixin for views that require permission to add or update an object.
+    """
+    pk_url_kwarg = 'pk'
+    template_name = 'core/generic_form.html'
+    fields = '__all__'
+    
+    def get_success_url(self):
+        return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
+    
+    def get_queryset(self):
+        if hasattr(self.model.objects, "for_user"):
+            return self.model.objects.for_user(self.request)
+        return super().get_queryset()
+
+class BaseCreateView(BaseWriteView, CreateView):
     """
     Mixin for views that require permission to add an object.
-    
-    Attributes:
-        model: Model to create
-        template_name: Name of the template to use for rendering
-        fields: List of fields to include in the form
     """
-    model = None
-    template_name = 'core/generic_form.html'
-    fields = []
-
     def get_permission_required(self):
-        """
-        Get the permission required for this view.
-        
-        Returns:
-            list: List of permissions required
-        """
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.add_{self.model_name}']
+    
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        
+        # Make field disabled (grayed out and not submitted)
+        if 'faculty' in form.fields:
+            form.fields['faculty'].disabled = True
+            form.fields['faculty'].initial = self.request.session.get('selected_faculty')
+        
+        if 'program' in form.fields:
+            form.fields['program'].disabled = True
+            form.fields['program'].initial = self.request.session.get('selected_program')
+    
+        return form
 
-class BaseUpdateView(PermissionRequiredMixin, UpdateView):
+class BaseUpdateView(BaseWriteView, UpdateView):
     """
     Mixin for views that require permission to update an object.
-    
-    Attributes:
-        model: Model to update
-        pk_url_kwarg: Name of the URL keyword argument for the primary key
-        template_name: Name of the template to use for rendering
     """
-    model = None
-    pk_url_kwarg = 'pk'
-    template_name = 'core/generic_form.html'
-    fields = []
-
     def get_permission_required(self):
-        """
-        Get the permission required for this view.
-        
-        Returns:
-            list: List of permissions required
-        """
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
-        """
-        Dynamically determines the permission required based on the view's model.
-        """
         return [f'{self.app_label}.change_{self.model_name}']
+        
 
-class BaseDeleteView(PermissionRequiredMixin, DeleteView):
+class BaseDeleteView(BaseWriteView, DeleteView):
     """
     Mixin for views that require permission to delete an object.
-    
-    Attributes:
-        model: Model to delete
-        pk_url_kwarg: Name of the URL keyword argument for the primary key
-        template_name: Name of the template to use for rendering
     """
-    model = None
-    pk_url_kwarg = 'pk'
     template_name = 'core/generic_delete.html'
 
     def get_permission_required(self):
-        """
-        Get the permission required for this view.
-        
-        Returns:
-            list: List of permissions required
-        """
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
-        """
-        Dynamically determines the permission required based on the view's model.
-        """
         return [f'{self.app_label}.delete_{self.model_name}']
-
-    def get_success_url(self):
-        """
-        Get the URL to redirect to after a successful deletion.
-        
-        Returns:
-            str: URL to redirect to
-        """
-        return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
-
-    def get_context_data(self, **kwargs):
-        """
-        Get the context data for this view.
-        
-        Args:
-            **kwargs: Keyword arguments
-        
-        Returns:
-            dict: Context data
-        """
-        context = super().get_context_data(**kwargs)
-        context["cancel_url"] = f'{self.app_label}:view_{self.model_name}'
-        return context
-
-    def get_queryset(self):
-        """
-        Get the queryset for this view.
-        
-        Returns:
-            QuerySet: Filtered queryset based on user permissions
-        """
-        if hasattr(self.model.objects, "for_user"):
-            return self.model.objects.for_user(self.request)
-        return super().get_queryset()
 
 @require_POST
 def set_faculty(request):
@@ -512,20 +401,25 @@ def set_faculty(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
     
     faculty_id = request.POST.get('faculty_id')
-    
-    if faculty_id:
-        try:
-            faculty_id = int(faculty_id)
-            # Check if the faculty is in user's faculties
-            if faculty_id not in request.user.faculties.values_list('id', flat=True):
-                return JsonResponse({'success': False, 'error': 'Unauthorized faculty'}, status=403)
-            request.session['selected_faculty'] = faculty_id
-            return redirect(request.META.get('HTTP_REFERER', '/'))
-            
-        except (ValueError, TypeError):
-            return JsonResponse({'success': False, 'error': 'Invalid faculty ID'}, status=400)
-    
-    return JsonResponse({'success': False, 'error': 'No faculty ID provided'}, status=400)
+    try:
+        faculty_id = int(faculty_id)
+    except:
+        # don't set anything if invalid
+        return redirect(request.META.get('HTTP_REFERER', '/'))
+    user = request.user
+    authorized = user.has_perm('users.access_global')
+    if not authorized and faculty_id not in user.faculties.values_list('id', flat=True):
+        return JsonResponse({'success': False, 'error': 'Unauthorized faculty'}, status=403)
+    request.session['selected_faculty'] = faculty_id
+    # now set the program as well
+    if authorized:
+        new_program = Program.objects.filter(faculty_id=faculty_id).first()
+    else:
+        new_program = user.programs.filter(faculty_id=faculty_id).first()
+    if new_program:
+        request.session['selected_program'] = new_program.id
+
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @require_POST
 def set_program(request):
@@ -536,15 +430,15 @@ def set_program(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
     
     program_id = request.POST.get('program_id')
-    if program_id:
-        try:
-            program_id = int(program_id)
-            # Check if the program is in user's programs
-            if program_id not in request.user.programs.values_list('id', flat=True):
-                return JsonResponse({'success': False, 'error': 'Unauthorized program'}, status=403)
-            request.session['selected_program'] = program_id
-            return redirect(request.META.get('HTTP_REFERER', '/'))
-        except (ValueError, TypeError):
-            return JsonResponse({'success': False, 'error': 'Invalid program ID'}, status=400)
-    
-    return JsonResponse({'success': False, 'error': 'No program ID provided'}, status=400)
+    try:
+        program_id = int(program_id)
+    except:
+        # don't set anything if invalid
+        return redirect(request.META.get('HTTP_REFERER', '/'))
+    # Check if the program is in user's programs
+    user = request.user
+    authorized = user.has_perm('users.access_global') or user.has_perm('users.access_faculty_wide')
+    if not authorized and program_id not in request.user.programs.values_list('id', flat=True):
+        return JsonResponse({'success': False, 'error': 'Unauthorized program'}, status=403)
+    request.session['selected_program'] = program_id
+    return redirect(request.META.get('HTTP_REFERER', '/'))

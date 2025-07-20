@@ -3,7 +3,7 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.admin import UserAdmin
 from django.db.models import Q
 from allauth.account.models import EmailAddress
-from .models import CustomUser, Professor, Student, Staff
+from .models import CustomUser, Professor, Student
 from .forms import CustomUserAdminForm
 
 # Unregister default Group admin to replace with custom version
@@ -62,7 +62,7 @@ class CustomUserAdmin(UserAdmin):
     search_fields = ('email','username','first_name','last_name','phone_number')
 
     add_fieldsets = (
-        ('Authentication', {'fields': ('username','email','phone_number')}),
+        ('Authentication', {'fields': ('email','phone_number')}),
         ('Personal Information', {'fields': ('first_name','last_name')}),
         ('Affiliations', {'fields': ('faculties','programs')}),
         ('Permissions', {'fields': ('is_active','is_staff','groups')}),
@@ -77,10 +77,5 @@ class ProfessorAdmin(admin.ModelAdmin):
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ('user', 'faculty', 'program')
-    list_filter = ('faculty', 'program')
-
-@admin.register(Staff)
-class StaffAdmin(admin.ModelAdmin):
     list_display = ('user', 'faculty', 'program')
     list_filter = ('faculty', 'program')
