@@ -1,27 +1,16 @@
-from django.views.generic import ListView, View
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.mixins import PermissionRequiredMixin
-from apps.core.views import BaseExportView, BaseDeleteView, BaseListView, BaseCreateView, BaseUpdateView
-from apps.core.forms import generate_dynamic_form_class
-from apps.organization.models import Faculty
+from django.views.generic import ListView
+from django.shortcuts import get_object_or_404
+from apps.core.views import BaseDeleteView, BaseListView, BaseCreateView, BaseUpdateView
 from .models import Activity, ActivityTemplate
-from .forms import translate_json_to_schema, ActivityForm
+from .forms import get_json_form
 
 class ActivityListView(BaseListView):
     """
     View for listing all activities.
-    
-    Extends BaseListView to provide a filtered list of activities based on user permissions.
-    
-    Attributes:
-        model: The Activity model to display
-        actions: List of available actions (add, export, delete)
-        table_fields: Fields to display in the activity list
     """
     model = Activity
-    actions = ["add", "export", "delete"]
-    table_fields = ['author', 'template']
-    group_by = ['faculty']
+    actions = ["add", "delete"]
+    table_fields = ['author', 'template', 'faculty', 'response_json']
 
 class ActivityTemplateSelectView(ListView):
     """
@@ -41,36 +30,14 @@ class ActivityCreateView(BaseCreateView):
     """
     model = Activity
     def get_form(self):
-        activity_template = get_object_or_404(ActivityTemplate, pk=self.kwargs['template_pk'])
-        schema = translate_json_to_schema(activity_template.template_json)
-        Form = ActivityForm(schema=schema)
-        return Form
+        activity_template = ActivityTemplate.objects.get(pk=self.kwargs['template_pk'])
+        Form = get_json_form(activity_template.template_json)
+        return Form(self.request.POST or None)
 
     def form_valid(self, form):
         form.instance.template = ActivityTemplate.objects.get(pk=self.kwargs['template_pk'])
         form.instance.author = self.request.user
         return super().form_valid(form)
-
-class ActivityExportView(BaseExportView):
-    """
-    View for exporting activities to Excel.
-    
-    Extends BaseExportView to provide Excel export functionality for activities.
-    
-    Attributes:
-        model: The Activity model to export
-        fields_to_export: List of fields to include in the export
-        json_fields_to_extract: JSON fields to handle separately
-    """
-    model = Activity
-    fields_to_export = [
-        ('template', 'Type'),
-        ('author', 'Author'),
-        ('created_at', 'Created At'),
-        ('faculty', 'Faculty'),
-        ('response_json', 'Response'),
-    ]
-    json_fields_to_extract = ['response_json']
 
 class ActivityDeleteView(BaseDeleteView):
     model = Activity

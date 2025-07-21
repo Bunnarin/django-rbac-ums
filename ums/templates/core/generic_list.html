@@ -6,10 +6,7 @@
         {% if add_url %}
             <a href="{% url add_url %}" class="btn btn-primary">Add</a>
         {% endif %}
-
-        {% if export_url %}
-            <a href="{% url export_url %}" class="btn btn-success">Export</a>
-        {% endif %}
+        <button class="btn" onclick="exportToExcel('xlsx')">Export</button>
     </div>
 
     <!-- Search and Filter Section -->
@@ -17,22 +14,20 @@
         <div class="card-header">
             <h6 class="mb-0">
                 <button class="btn btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false" aria-controls="filterCollapse">
-                    <i class="fas fa-filter me-2"></i>Filters & Search
+                    Filters & Search
                 </button>
             </h6>
         </div>
         <div class="collapse" id="filterCollapse">
             <div class="card-body">
                 <div class="row">
-                    {% for field in table_fields %}
+                    {% for header in table_fields %}
                         <div class="col-md-6 col-lg-4 mb-3">
-                            <label for="filter_{{ forloop.counter0 }}" class="form-label">
-                                {{ field|title }}
-                            </label>
+                            <label for="filter_{{ forloop.counter0 }}" class="form-label">{{ header }}</label>
                             <input type="text" 
                                    class="form-control filter-input" 
                                    id="filter_{{ forloop.counter0 }}" 
-                                   placeholder="Search {{ field|title }}..."
+                                   placeholder="Search {{ header }}..."
                                    data-column="{{ forloop.counter0 }}">
                         </div>
                     {% endfor %}
@@ -40,54 +35,48 @@
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-secondary" id="clearFilters">Clear All</button>
                 </div>
+                
                 <!-- Active Filters Display -->
                 <div id="activeFilters" class="mt-3"></div>
             </div>
         </div>
     </div>
 
+    <!-- Table Section -->
     <div class="table-responsive">
-        {% if group_by %}
-            <div id="grouped-tables-container">
-                <!-- Tables will be inserted here by JavaScript -->
-            </div>
-        {% else %}
-            <table class="table table-striped table-hover table-bordered" id="dataTable">
-                <thead>
-                    <tr>
-                        {% for header in table_fields %}
-                            <th>{{ header|title }}</th>
-                        {% endfor %}
-                        {% if change_url or delete_url %}
-                            <th>Actions</th>
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for obj in object_list %}
-                        <tr>
-                            {% for field in table_fields %}
-                                <td>{{ obj|get_attr_from_object:field }}</td>
-                            {% endfor %}
-                            {% if change_url or delete_url %}
-                                <td>
-                                    {% if change_url %}
-                                        <a href="{% url change_url obj.pk %}" class="btn btn-sm btn-info">✏️</a>
-                                    {% endif %}
-                                    {% if delete_url %}
-                                        <a href="{% url delete_url obj.pk %}" class="btn btn-sm btn-danger">🗑️</a>
-                                    {% endif %}
-                                </td>
-                            {% endif %}
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="{{ table_fields|length|add:1 }}" class="text-center">No data available</td>
-                        </tr>
+        <table class="table table-striped table-hover table-bordered" id="data-table">
+            <thead>
+                <tr>
+                    {% if change_url or delete_url %}
+                        <th>Actions</th>
+                    {% endif %}
+                    {% for field in table_fields %}
+                        <th class="{% if field in group_by %}d-none{% endif %}">
+                            {{ field|title }}
+                        </th>
                     {% endfor %}
-                </tbody>
-            </table>
-        {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+            {% for obj in object_list %}
+                <tr>
+                {% if change_url or delete_url %}
+                    <td>
+                        {% if change_url %}
+                            <a href="{% url change_url obj.pk %}" class="btn btn-sm btn-info">✏️</a>
+                        {% endif %}
+                        {% if delete_url %}
+                            <a href="{% url delete_url obj.pk %}" class="btn btn-sm btn-danger">🗑️</a>
+                        {% endif %}
+                    </td>
+                {% endif %}
+                {% for field in table_fields %}
+                    <td>{{ obj|get_attr_from_object:field }}</td>
+                {% endfor %}
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
     </div>
 
     <!-- Results Info -->
@@ -99,248 +88,150 @@
 {% endblock %}
 
 {% block extra_js %}
-    {% if group_by %}
+    <!-- Code for filtering -->
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get the container and data
-        const container = document.getElementById('grouped-tables-container');
-        const tableData = {{ object_list_data|safe }};
-        const groupByFields = {{ group_by|safe }};
-        const tableFields = {{ table_fields|safe }};
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterInputs = document.querySelectorAll('.filter-input');
+            const clearFiltersBtn = document.getElementById('clearFilters');
+            const activeFiltersDiv = document.getElementById('activeFilters');
+            const dataTable = document.getElementById('data-table');
+            const tbody = dataTable.querySelector('tbody');
+            const allRows = Array.from(tbody.querySelectorAll('tr'));
+            const visibleRowsSpan = document.getElementById('visibleRows');
+            const totalRowsSpan = document.getElementById('totalRows');
+            
+            // Get the number of columns from the header row (subtract 1 for actions column)
+            const numDataColumns = dataTable.querySelector('thead th').length - 1;
+            
+            let debounceTimer;
         
-        // Function to create a table for a group
-        function createTable(items) {
-            const table = document.createElement('table');
-            table.className = 'table table-striped table-hover mb-0';
-            
-            // Create table header
-            const thead = document.createElement('thead');
-            let headerRow = '<tr>';
-            tableFields.forEach(field => {
-                if (!groupByFields.includes(field)) {
-                    headerRow += `<th>${field.replace(/_/g, ' ').toUpperCase()}</th>`;
-                }
+            // Initialize
+            updateActiveFilters();
+            updateRowCounts();
+        
+            // Live filtering with debounce
+            filterInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(applyFilters, 300);
+                });
             });
-            {% if change_url or delete_url %}
-            headerRow += '<th>ACTIONS</th>';
-            {% endif %}
-            headerRow += '</tr>';
-            thead.innerHTML = headerRow;
-            
-            // Create table body
-            const tbody = document.createElement('tbody');
-            items.forEach(item => {
-                let row = '<tr>';
-                tableFields.forEach(field => {
-                    if (!groupByFields.includes(field)) {
-                        row += `<td>${item[field] || ''}</td>`;
+        
+            // Clear all filters
+            clearFiltersBtn.addEventListener('click', function() {
+                filterInputs.forEach(input => input.value = '');
+                applyFilters();
+                updateActiveFilters();
+            });
+        
+            function applyFilters() {
+                const filters = [];
+                let hasActiveFilters = false;
+        
+                // Collect active filters with their column indices
+                filterInputs.forEach((input, filterIndex) => {
+                    const value = input.value.trim().toLowerCase();
+                    if (value) {
+                        // Map filter index to data column index (add 1 to skip actions column)
+                        const columnIndex = filterIndex + 1;
+                        filters.push({
+                            columnIndex: columnIndex,
+                            value: value
+                        });
+                        hasActiveFilters = true;
                     }
                 });
-                
-                {% if change_url or delete_url %}
-                row += '<td>';
-                {% if change_url %}
-                row += `<a href="{{ change_url|slice:":-1" }}${item['pk']}/" class="btn btn-sm btn-info">✏️</a> `;
-                {% endif %}
-                {% if delete_url %}
-                row += `<a href="{{ delete_url|slice:":-1" }}${item['pk']}/" class="btn btn-sm btn-danger">🗑️</a>`;
-                {% endif %}
-                row += '</td>';
-                {% endif %}
-                
-                row += '</tr>';
-                tbody.innerHTML += row;
-            });
-            
-            // Assemble the table
-            table.appendChild(thead);
-            table.appendChild(tbody);
-            
-            return table;
-        }
         
-        // Group the data
-        function groupData(items, groupFields) {
-            if (groupFields.length === 0) return [
-                { groupName: 'All Items', items: items, groupParts: [] }
-            ];
-            
-            const field = groupFields[0];
-            const remainingFields = groupFields.slice(1);
-            const groups = {};
-            
-            // Group by current field
-            items.forEach(item => {
-                const key = item[field] || 'None';
-                if (!groups[key]) {
-                    groups[key] = [];
-                }
-                groups[key].push(item);
-            });
-            
-            // Process remaining fields recursively if any
-            const result = [];
-            for (const [key, groupItems] of Object.entries(groups)) {
-                const fieldName = field.split('__').pop().replace(/_/g, ' ').toUpperCase();
-                const groupName = `${fieldName}: ${key}`;
+                // Show/hide rows based on filters
+                let visibleCount = 0;
+                allRows.forEach(row => {
+                    let shouldShow = true;
+        
+                    if (hasActiveFilters) {
+                        for (const filter of filters) {
+                            // Skip if we've already determined this row should be hidden
+                            if (!shouldShow) break;
+                            
+                            const cell = row.cells[filter.columnIndex];
+                            // Skip if this is the actions column
+                            if (cell.querySelector('a, button, .btn')) continue;
+                            
+                            const cellText = cell.textContent.trim().toLowerCase();
+                            if (!cellText.includes(filter.value)) {
+                                shouldShow = false;
+                            }
+                        }
+                    }
+        
+                    if (shouldShow) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+        
+                updateRowCounts(visibleCount);
+                updateActiveFilters();
+            }
+        
+            function updateActiveFilters() {
+                const activeFilters = [];
+                const headers = [{% for header in table_fields %}'{{ header }}'{% if not forloop.last %},{% endif %}{% endfor %}];
                 
-                if (remainingFields.length > 0) {
-                    // For nested groups, create a header and then process subgroups
-                    const subGroups = groupData(groupItems, remainingFields);
-                    subGroups.forEach(subGroup => {
-                        result.push({
-                            groupName: `${groupName}\n${subGroup.groupName}`,
-                            groupParts: [{field: fieldName, value: key}, ...subGroup.groupParts],
-                            items: subGroup.items
+                filterInputs.forEach((input, index) => {
+                    const value = input.value.trim();
+                    if (value) {
+                        activeFilters.push({
+                            column: headers[index],
+                            value: value,
+                            index: index
                         });
+                    }
+                });
+        
+                if (activeFilters.length > 0) {
+                    let filtersHtml = '<div class="d-flex flex-wrap gap-2 align-items-center"><small class="text-muted me-2">Active filters:</small>';
+                    activeFilters.forEach(filter => {
+                        filtersHtml += `
+                            <span class="badge bg-primary d-flex align-items-center gap-1">
+                                <strong>${filter.column}:</strong> ${filter.value}
+                                <button type="button" class="btn-close btn-close-white" style="font-size: 0.7em;" 
+                                        onclick="removeFilter(${filter.index})" aria-label="Remove filter"></button>
+                            </span>
+                        `;
                     });
+                    filtersHtml += '</div>';
+                    activeFiltersDiv.innerHTML = filtersHtml;
                 } else {
-                    // For leaf groups, just add the items
-                    result.push({
-                        groupName: groupName,
-                        groupParts: [{field: fieldName, value: key}],
-                        items: groupItems
-                    });
+                    activeFiltersDiv.innerHTML = '';
                 }
             }
-            
-            return result;
-        }
+            function updateRowCounts(visibleCount = null) {
+                if (visibleCount === null) {
+                    visibleCount = allRows.filter(row => row.style.display !== 'none').length;
+                }
+                visibleRowsSpan.textContent = visibleCount;
+                totalRowsSpan.textContent = allRows.length;
+            }
         
-        // Render the grouped tables
-        const groupedData = groupData(tableData, groupByFields);
-        groupedData.forEach(group => {
-            const card = document.createElement('div');
-            card.className = 'card mb-4';
-            
-            // Create card header with group name parts on separate lines
-            const cardHeader = document.createElement('div');
-            cardHeader.className = 'card-header bg-light';
-            
-            const title = document.createElement('h5');
-            title.className = 'mb-0';
-            
-            // Add each group part on a new line
-            group.groupParts.forEach(part => {
-                const partDiv = document.createElement('div');
-                partDiv.textContent = `${part.field}: ${part.value}`;
-                title.appendChild(partDiv);
-            });
-            
-            cardHeader.appendChild(title);
-            card.appendChild(cardHeader);
-            
-            // Create and append the table
-            const table = createTable(group.items);
-            const cardBody = document.createElement('div');
-            cardBody.className = 'card-body p-0';
-            cardBody.appendChild(table);
-            card.appendChild(cardBody);
-            
-            container.appendChild(card);
+            // Global function for removing individual filters
+            window.removeFilter = function(index) {
+                filterInputs[index].value = '';
+                applyFilters();
+                updateActiveFilters();
+            };
         });
-        
-        // Update the row count
-        document.getElementById('visibleRows').textContent = tableData.length;
-        document.getElementById('totalRows').textContent = tableData.length;
-    });
     </script>
-    {% endif %}
-{% endblock %}
 
-{% block extra_content %}
-    <div class="mb-3">
-        {% if add_url %}
-            <a href="{% url add_url %}" class="btn btn-primary">Add</a>
-        {% endif %}
-
-        {% if export_url %}
-            <a href="{% url export_url %}" class="btn btn-success">Export</a>
-        {% endif %}
-    </div>
-
-    <!-- Search and Filter Section -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h6 class="mb-0">
-                <button class="btn btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false" aria-controls="filterCollapse">
-                    <i class="fas fa-filter me-2"></i>Filters & Search
-                </button>
-            </h6>
-        </div>
-        <div class="collapse" id="filterCollapse">
-            <div class="card-body">
-                <div class="row">
-                    {% for field in table_fields %}
-                        <div class="col-md-6 col-lg-4 mb-3">
-                            <label for="filter_{{ forloop.counter0 }}" class="form-label">
-                                {{ field|title }}
-                            </label>
-                            <input type="text" 
-                                   class="form-control filter-input" 
-                                   id="filter_{{ forloop.counter0 }}" 
-                                   placeholder="Search {{ field|title }}..."
-                                   data-column="{{ forloop.counter0 }}">
-                        </div>
-                    {% endfor %}
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-secondary" id="clearFilters">Clear All</button>
-                </div>
-                <!-- Active Filters Display -->
-                <div id="activeFilters" class="mt-3"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="table-responsive">
-        {% if group_by %}
-            <div id="grouped-tables-container">
-                <!-- Tables will be inserted here by JavaScript -->
-            </div>
-        {% else %}
-            <table class="table table-striped table-hover table-bordered" id="dataTable">
-                <thead>
-                    <tr>
-                        {% for header in table_fields %}
-                            <th>{{ header|title }}</th>
-                        {% endfor %}
-                        {% if change_url or delete_url %}
-                            <th>Actions</th>
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for obj in object_list %}
-                        <tr>
-                            {% for field in table_fields %}
-                                <td>{{ obj|get_attr_from_object:field }}</td>
-                            {% endfor %}
-                            {% if change_url or delete_url %}
-                                <td>
-                                    {% if change_url %}
-                                        <a href="{% url change_url obj.pk %}" class="btn btn-sm btn-info">✏️</a>
-                                    {% endif %}
-                                    {% if delete_url %}
-                                        <a href="{% url delete_url obj.pk %}" class="btn btn-sm btn-danger">🗑️</a>
-                                    {% endif %}
-                                </td>
-                            {% endif %}
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="{{ table_fields|length|add:1 }}" class="text-center">No data available</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% endif %}
-    </div>
-
-    <!-- Results Info -->
-    <div class="mt-3">
-        <small class="text-muted">
-            Showing <span id="visibleRows">0</span> of <span id="totalRows">0</span> records
-        </small>
-    </div>
+    <!-- Code for exporting -->
+    <script type="text/javascript" src="https://cdn.sheetjs.com/xlsx-latest/package/dist/shim.min.js"></script>
+    <script type="text/javascript" src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script>
+        function exportToExcel(type, fn) {
+            var elt = document.getElementById('data-table');
+            var wb = XLSX.utils.table_to_book(elt, {sheet:"Sheet JS"});
+            XLSX.writeFile(wb, fn || ('SheetJSTableExport.' + (type || 'xlsx')));
+        }
+    </script>
 {% endblock %}

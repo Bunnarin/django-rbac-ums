@@ -1,10 +1,10 @@
 from django.contrib.auth.models import Permission
-from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseExportView
+from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView
 from .models import Student, Professor, CustomUser
 
 class UserListView(BaseListView):
     model = CustomUser
-    actions = ['export', 'add', 'change', 'delete']
+    actions = ['add', 'change', 'delete']
     table_fields = ['username', 'first_name', 'last_name', 'email', 'phone_number']
 
 class UserCreateView(BaseCreateView):
@@ -25,7 +25,7 @@ class UserCreateView(BaseCreateView):
         user_perms = (user_perms_direct | user_perms_via_groups).distinct()
         form.fields['user_permissions'].queryset = user_perms
         
-        # filter affiliation
+        # filter affiliations
         if user.has_perm('users.access_global'):
             return form
         elif user.has_perm('users.access_faculty_wide'):
@@ -45,13 +45,9 @@ class UserUpdateView(BaseUpdateView):
 class UserDeleteView(BaseDeleteView):
     model = CustomUser
 
-class UserExportView(BaseExportView):
-    model = CustomUser
-    fields_to_export = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs']
-
 class StudentListView(BaseListView):
     model = Student
-    actions = ['export', 'add', 'change', 'delete']
+    actions = ['add', 'change', 'delete']
     table_fields = ['user', 'faculty', 'program']
 
 class StudentCreateView(BaseCreateView):
@@ -64,13 +60,9 @@ class StudentUpdateView(BaseUpdateView):
 class StudentDeleteView(BaseDeleteView):
     model = Student
 
-class StudentExportView(BaseExportView):
-    model = Student
-    fields_to_export = ['user', 'faculty', 'program']
-
 class ProfessorListView(BaseListView):
     model = Professor
-    actions = ['export', 'add', 'change', 'delete']
+    actions = ['add', 'change', 'delete']
     table_fields = ['user', 'faculty', 'program']
 
 class ProfessorCreateView(BaseCreateView):
@@ -82,8 +74,3 @@ class ProfessorUpdateView(BaseUpdateView):
 
 class ProfessorDeleteView(BaseDeleteView):
     model = Professor
-
-class ProfessorExportView(BaseExportView):
-    model = Professor
-    fields_to_export = ['user', 'faculty', 'program']
-

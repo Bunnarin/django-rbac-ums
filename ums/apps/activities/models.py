@@ -50,7 +50,7 @@ class Activity(FacultyNullMixin):
     Stores user responses to activity templates with row-level security.
     """
     template = models.ForeignKey(ActivityTemplate, null=True, on_delete=models.SET_NULL)
-    response_json = models.JSONField(encoder=CustomJSONEncoder, default=dict)
+    response_json = models.JSONField()
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Last Updated At")
@@ -61,7 +61,7 @@ class Activity(FacultyNullMixin):
         return Q(author=user)
 
     def __str__(self): 
-        return f"{self.template.name} activity created by {self.author} on {self.created_at.strftime('%Y-%m-%d')}"
+        return f"{self.template.name if self.template else ''} activity created by {self.author} on {self.created_at.strftime('%Y-%m-%d')}"
 
     class Meta:
         verbose_name_plural = "Activities"

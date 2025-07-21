@@ -14,7 +14,7 @@ class RLSManager(models.Manager):
             return queryset
 
         # Apply the RLS filters based on the user's permissions
-        if user.has_perm('users.access_global'):
+        if user.has_perm('users.access_global') :
             return queryset
 
         # Faculty-wide access check
