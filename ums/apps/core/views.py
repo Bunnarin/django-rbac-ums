@@ -223,25 +223,38 @@ class BaseListView(PermissionRequiredMixin, ListView):
     actions = []
     template_name = 'core/generic_list.html'
     table_fields = []
+    group_by = None  # List of fields to group by, e.g. ['faculty', 'program']
 
     def get_permission_required(self):
-        """
-        Get the permission required for this view.
-        """
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         user = self.request.user
         for action in ["view", "change", "delete"]:
             if user.has_perm(f'{self.app_label}.{action}_{self.model_name}'):
                 return [f'{self.app_label}.{action}_{self.model_name}']
-        return [f'{self.app_label}.view_{self.model_name}'] # Default to view permission
+        return [f'{self.app_label}.view_{self.model_name}']
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['table_headers'] = self.table_fields
-        context['table_fields'] = self.table_fields
+        
+        # Get the base queryset
+        queryset = self.get_queryset()
+        
+        # Process grouping if group_by is specified
+        if self.group_by:
+            context['grouped_data'] = self._group_queryset(queryset, self.group_by)
+            context['group_headers'] = self.group_by
+            # Only show fields that aren't in group_by
+            context['table_fields'] = [f for f in self.table_fields if f not in self.group_by]
+            context['show_headers'] = True  # Show column headers
+            context['all_fields'] = self.table_fields  # Keep all fields for filtering
+        else:
+            context['table_fields'] = self.table_fields
+            context['object_list'] = queryset
+            context['show_headers'] = True
+            context['all_fields'] = self.table_fields
 
-        # check permission
+        # Set up action URLs
         user = self.request.user
         for action in self.actions:
             if action == "export":
@@ -255,6 +268,64 @@ class BaseListView(PermissionRequiredMixin, ListView):
                 context[f"{action}_url"] = url
 
         return context
+    
+    def _group_queryset(self, queryset, group_by):
+        if not group_by or not queryset.exists():
+            return []
+            
+        def get_display_value(obj, field_path):
+            if not obj:
+                return ""
+                
+            parts = field_path.split('__')
+            value = obj
+            
+            for part in parts:
+                try:
+                    value = getattr(value, part, None)
+                    if value is None:
+                        break
+                except Exception:
+                    return ""
+                    
+            return str(value) if value is not None else ""
+            
+        # Get all unique combinations of group values
+        values = queryset.order_by(*group_by).values_list(*group_by, flat=False).distinct()
+        
+        result = []
+        
+        for value_tuple in values:
+            if all(v is None for v in value_tuple):
+                continue
+                
+            # Create filter for this combination of values
+            filters = {}
+            for i, field in enumerate(group_by):
+                if value_tuple[i] is not None:
+                    filters[field] = value_tuple[i]
+            
+            # Get items for this combination
+            items = queryset.filter(**filters)
+            
+            # Get display values for the group
+            if items.exists():
+                first_item = items.first()
+                name_parts = []
+                for field, val in zip(group_by, value_tuple):
+                    if val is not None:
+                        field_name = field.split('__')[-1].replace('_', ' ').title()
+                        display_val = get_display_value(first_item, field)
+                        name_parts.append(f"{field_name}: {display_val}")
+                
+                result.append({
+                    'name': "<br>".join(name_parts),  # For backward compatibility
+                    'name_parts': name_parts,  # New: Individual parts for better template control
+                    'items': items,
+                    'filters': filters
+                })
+        
+        return result
 
     def get_queryset(self):
         if hasattr(self.model.objects, "for_user"):

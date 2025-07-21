@@ -20,7 +20,8 @@ class ActivityListView(BaseListView):
     """
     model = Activity
     actions = ["add", "export", "delete"]
-    table_fields = ['author', 'faculty', 'template']
+    table_fields = ['author', 'template']
+    group_by = ['faculty']
 
 class ActivityTemplateSelectView(ListView):
     """
