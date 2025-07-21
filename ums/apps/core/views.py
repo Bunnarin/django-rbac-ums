@@ -10,40 +10,6 @@ from django.views.decorators.http import require_POST
 from django.shortcuts import redirect
 from apps.organization.models import Program
 
-class BaseWriteView(PermissionRequiredMixin):
-    """
-    Mixin for views that require permission to add or update an object.
-    """
-    pk_url_kwarg = 'pk'
-    fields = '__all__'
-    
-    def get_success_url(self):
-        return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
-    
-    def get_queryset(self):
-        if hasattr(self.model.objects, "for_user"):
-            return self.model.objects.for_user(self.request)
-        return super().get_queryset()
-    
-    def get_form(self, form_class=None):
-        form = super().get_form(form_class)
-        if not hasattr(form, 'faculty'):
-            return form
-            
-        form.fields['faculty'].initial = self.request.session.get('selected_faculty')
-        form.fields['program'].initial = self.request.session.get('selected_program')
-        user = self.request.user
-        if user.has_perm('users.access_global'):
-            return form
-        elif user.has_perm('users.access_faculty_wide'):
-            form.fields['faculty'].queryset = user.faculties.all()
-            form.fields['program'].queryset = Program.objects.filter(faculty__in=user.faculties.all())
-        else:
-            form.fields['faculty'].queryset = user.faculties.all()
-            form.fields['program'].queryset = user.programs.all()
-    
-        return form
-
 class BaseExportView(View):
     """
     Base view for exporting data to Excel format.
@@ -236,101 +202,88 @@ class BaseListView(PermissionRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
-        # Get the base queryset
         queryset = self.get_queryset()
         
-        # Process grouping if group_by is specified
+        # Add table configuration
+        context['table_fields'] = self.table_fields
+        context['group_by'] = self.group_by  # Pass group_by to template
+        
+        # Convert queryset to list of dicts for JSON serialization
         if self.group_by:
-            context['grouped_data'] = self._group_queryset(queryset, self.group_by)
-            context['group_headers'] = self.group_by
-            # Only show fields that aren't in group_by
-            context['table_fields'] = [f for f in self.table_fields if f not in self.group_by]
-            context['show_headers'] = True  # Show column headers
-            context['all_fields'] = self.table_fields  # Keep all fields for filtering
+            context['object_list_data'] = []
+            for obj in queryset:
+                item = {'pk': str(obj.pk)}
+                for field in self.table_fields + self.group_by:
+                    if '__' in field:  # Handle related fields
+                        related_parts = field.split('__')
+                        value = obj
+                        try:
+                            for part in related_parts:
+                                value = getattr(value, part, None)
+                                if value is None:
+                                    break
+                        except Exception:
+                            value = None
+                        item[field] = str(value) if value is not None else ''
+                    else:  # Regular field
+                        value = getattr(obj, field, None)
+                        item[field] = str(value) if value is not None else ''
+                context['object_list_data'].append(item)
         else:
-            context['table_fields'] = self.table_fields
             context['object_list'] = queryset
-            context['show_headers'] = True
-            context['all_fields'] = self.table_fields
-
+        
         # Set up action URLs
         user = self.request.user
         for action in self.actions:
             if action == "export":
-                url = f'{self.app_label}:export_{self.model_name}'
-                context["export_url"] = url
+                context["export_url"] = reverse_lazy(f"{self.app_label}:{self.model_name}_export")
                 continue
-
-            permission = f'{self.app_label}.{action}_{self.model_name}'
+                
+            permission = f"{self.app_label}.{action}_{self.model_name}"
             if user.has_perm(permission):
                 url = permission.replace('.', ':')
                 context[f"{action}_url"] = url
 
         return context
-    
-    def _group_queryset(self, queryset, group_by):
-        if not group_by or not queryset.exists():
-            return []
-            
-        def get_display_value(obj, field_path):
-            if not obj:
-                return ""
-                
-            parts = field_path.split('__')
-            value = obj
-            
-            for part in parts:
-                try:
-                    value = getattr(value, part, None)
-                    if value is None:
-                        break
-                except Exception:
-                    return ""
-                    
-            return str(value) if value is not None else ""
-            
-        # Get all unique combinations of group values
-        values = queryset.order_by(*group_by).values_list(*group_by, flat=False).distinct()
         
-        result = []
-        
-        for value_tuple in values:
-            if all(v is None for v in value_tuple):
-                continue
-                
-            # Create filter for this combination of values
-            filters = {}
-            for i, field in enumerate(group_by):
-                if value_tuple[i] is not None:
-                    filters[field] = value_tuple[i]
-            
-            # Get items for this combination
-            items = queryset.filter(**filters)
-            
-            # Get display values for the group
-            if items.exists():
-                first_item = items.first()
-                name_parts = []
-                for field, val in zip(group_by, value_tuple):
-                    if val is not None:
-                        field_name = field.split('__')[-1].replace('_', ' ').title()
-                        display_val = get_display_value(first_item, field)
-                        name_parts.append(f"{field_name}: {display_val}")
-                
-                result.append({
-                    'name': "<br>".join(name_parts),  # For backward compatibility
-                    'name_parts': name_parts,  # New: Individual parts for better template control
-                    'items': items,
-                    'filters': filters
-                })
-        
-        return result
-
     def get_queryset(self):
         if hasattr(self.model.objects, "for_user"):
             return self.model.objects.for_user(self.request)
         return super().get_queryset()
+
+class BaseWriteView(PermissionRequiredMixin):
+    """
+    Mixin for views that require permission to add or update an object.
+    """
+    pk_url_kwarg = 'pk'
+    fields = '__all__'
+    
+    def get_success_url(self):
+        return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
+    
+    def get_queryset(self):
+        if hasattr(self.model.objects, "for_user"):
+            return self.model.objects.for_user(self.request)
+        return super().get_queryset()
+    
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        if not hasattr(form, 'faculty'):
+            return form
+            
+        form.fields['faculty'].initial = self.request.session.get('selected_faculty')
+        form.fields['program'].initial = self.request.session.get('selected_program')
+        user = self.request.user
+        if user.has_perm('users.access_global'):
+            return form
+        elif user.has_perm('users.access_faculty_wide'):
+            form.fields['faculty'].queryset = user.faculties.all()
+            form.fields['program'].queryset = Program.objects.filter(faculty__in=user.faculties.all())
+        else:
+            form.fields['faculty'].queryset = user.faculties.all()
+            form.fields['program'].queryset = user.programs.all()
+    
+        return form
 
 class BaseCreateView(BaseWriteView, CreateView):
     """
