@@ -72,11 +72,10 @@ class FacultyNullMixin(models.Model):
     class Meta:
         abstract = True
 
-class ProgramNullMixin(models.Model):
+class ProgramNullMixin(FacultyMixin):
     """
     Abstract base class for models that needs optional program relationship.
     """
-    faculty = models.ForeignKey(Faculty, on_delete=models.PROTECT)
     program = models.ForeignKey(Program, null=True, blank=True, on_delete=models.SET_NULL)
 
     class Meta:

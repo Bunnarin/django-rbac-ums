@@ -36,9 +36,12 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     # extensions
-    'widget_tweaks',
+    'django_jsonform',
+    'crispy_forms',
+    'crispy_bootstrap5',
     # custom apps
-    'apps.core.apps.CoreConfig',
+    'apps.core',
+    'apps.academic',
     'apps.users',
     'apps.activities',
     'apps.organization',
@@ -127,6 +130,9 @@ USE_TZ = True
 STATIC_URL = 'staticfiles/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [PROJECT_DIR / 'static'] # no idea why this is like this
+
+# Crispy forms configuration
+CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

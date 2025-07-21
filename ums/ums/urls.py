@@ -9,5 +9,6 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('activities/', include('apps.activities.urls')),
     path('users/', include('apps.users.urls')),
+    path('academic/', include('apps.academic.urls')),
     path('', home_view, name='home'),
 ]

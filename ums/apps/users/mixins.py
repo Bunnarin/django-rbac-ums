@@ -2,7 +2,6 @@ from django.db import models
 from django.db.models import Q
 from django.contrib.auth.models import Group
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from apps.organization.mixins import ProgramNullMixin
 from apps.core.managers import RLSManager
 
@@ -18,18 +17,13 @@ class ProfileMixin(ProgramNullMixin):
 
     class Meta:
         abstract = True
+        unique_together = ('user', 'faculty', 'program')
 
     def __str__(self):
         return self.user.__str__()
 
     def save(self, *args, **kwargs):   
         # put this in here bcuz clean is too early and soemtime we inject the affiliation during form_valid  
-        creation = not self.pk
-        if creation:
-            duplicated = self.__class__.objects.filter(user=self.user, faculty=self.faculty, program=self.program).exists()
-            if duplicated:
-                raise ValidationError("This user already has a profile for this faculty and program.")
-        
         profile_group, _ = Group.objects.get_or_create(name=f"ALL {self.__class__.__name__.upper()}")
         self.user.groups.add(profile_group)
         super().save(*args, **kwargs)

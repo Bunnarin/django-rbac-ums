@@ -32,7 +32,7 @@ class CustomUser(OrganizationsNullMixin, AbstractUser):
         # if updating, we need to check if we really need to add to the name
         new_username = self.first_name + self.last_name
         if self.username != new_username:
-            username_num = CustomUser.objects.filter(username=new_username).count()
+            username_num = CustomUser.objects.filter(username__startswith=new_username).count()
             if username_num > 0:
                 self.username = new_username + str(username_num)
             else:
@@ -62,5 +62,8 @@ class Professor(ProfileMixin):
     pass
 
 class Student(ProfileMixin):
-    pass
-    
+    _class = models.ForeignKey(
+        'academic.Class', 
+        on_delete=models.SET_NULL, 
+        null=True, blank=True, 
+        related_name='students')

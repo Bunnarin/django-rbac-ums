@@ -1,3 +1,4 @@
+from django.contrib.auth.models import Permission
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseExportView
 from .models import Student, Professor, CustomUser
 
@@ -8,25 +9,31 @@ class UserListView(BaseListView):
 
 class UserCreateView(BaseCreateView):
     model = CustomUser
-    fields = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs']
+    fields = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs', 'user_permissions']
     
     def get_form(self, form_class=None):
         """
-        Limit affiliation based on user's own affiliation
+        Filter the user permissions based on user's own permission set.
+        Limit affiliation based on user's own affiliation.
         """
         form = super().get_form(form_class)
+
+        user = self.request.user
+        # filter permissions
+        user_perms_direct = user.user_permissions.all()
+        user_perms_via_groups = Permission.objects.filter(group__in=user.groups.all())
+        user_perms = (user_perms_direct | user_perms_via_groups).distinct()
+        form.fields['user_permissions'].queryset = user_perms
         
-        user_faculties = getattr(self.request.user, 'faculties', None)
-        if user_faculties:
-            form.fields['faculties'].queryset = user_faculties.all()
+        # filter affiliation
+        if user.has_perm('users.access_global'):
+            return form
+        elif user.has_perm('users.access_faculty_wide'):
+            form.fields['faculties'].queryset = user.faculties.all()
+            form.fields['programs'].queryset = Program.objects.filter(faculty__in=user.faculties.all())
         else:
-            form.fields['faculties'].queryset = Faculty.objects.none()
-    
-        user_programs = getattr(self.request.user, 'programs', None)
-        if user_programs:
-            form.fields['programs'].queryset = user_programs.all()
-        else:
-            form.fields['programs'].queryset = Program.objects.none()
+            form.fields['faculties'].queryset = user.faculties.all()
+            form.fields['programs'].queryset = user.programs.all()
         
         return form
     

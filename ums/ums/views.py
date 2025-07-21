@@ -4,7 +4,7 @@ from django.apps import apps
 from django.db.models import Model
 
 def home_view(request):
-    accessible_models = []
+    accessible_models_by_app = {}
 
     excluded_app_labels = [
         'admin',       # Django Admin
@@ -49,10 +49,18 @@ def home_view(request):
             if request.user.has_perm(f'{app_label}.add_{model_name}'):
                 has_add_access = True
 
+            # Initialize app section if it doesn't exist
+            if app_label not in accessible_models_by_app:
+                app_config_obj = apps.get_app_config(app_label)
+                accessible_models_by_app[app_label] = {
+                    'app_name': app_config_obj.verbose_name or app_label.title(),
+                    'models': []
+                }
+
             if has_rud_access:
                 try:
                     model_url = reverse(f'{app_label}:view_{model_name}')
-                    accessible_models.append({
+                    accessible_models_by_app[app_label]['models'].append({
                         'name': verbose_name_plural,
                         'url': model_url,
                     })
@@ -61,14 +69,21 @@ def home_view(request):
             elif has_add_access: # If no RUD access, check if user can add
                 try:
                     model_url = reverse(f'{app_label}:add_{model_name}')
-                    accessible_models.append({
+                    accessible_models_by_app[app_label]['models'].append({
                         'name': f'Add {verbose_name_plural}',
                         'url': model_url,
                     })
                 except NoReverseMatch:
                     pass
 
+    # Remove apps with no accessible models
+    accessible_models_by_app = {
+        app_label: app_data 
+        for app_label, app_data in accessible_models_by_app.items() 
+        if app_data['models']
+    }
+
     context = {
-        'accessible_models': accessible_models
+        'accessible_models_by_app': accessible_models_by_app
     }
     return render(request, 'home.html', context)
