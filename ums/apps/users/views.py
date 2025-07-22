@@ -48,11 +48,11 @@ class UserDeleteView(BaseDeleteView):
 class StudentListView(BaseListView):
     model = Student
     actions = ['add', 'change', 'delete']
-    table_fields = ['user', 'faculty', 'program']
+    table_fields = ['user', '_class', 'faculty', 'program']
 
 class StudentCreateView(BaseCreateView):
     model = Student
-    fields = ['user', 'faculty', 'program']
+    flat_fields = [('user', ['first_name', 'last_name', 'email', 'phone_number'])]
 
 class StudentUpdateView(BaseUpdateView):
     model = Student
@@ -68,6 +68,7 @@ class ProfessorListView(BaseListView):
 class ProfessorCreateView(BaseCreateView):
     model = Professor
     fields = ['user', 'faculty', 'program']
+    flat_fields = [('user', ['first_name', 'last_name', 'email', 'phone_number'])]
 
 class ProfessorUpdateView(BaseUpdateView):
     model = Professor

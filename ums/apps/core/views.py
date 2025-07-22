@@ -4,7 +4,8 @@ from django.views.generic import ListView, DeleteView, CreateView, UpdateView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.decorators.http import require_POST
 from django.shortcuts import redirect
-from apps.organization.models import Program
+from apps.organization.models import Faculty, Program
+from django import forms
 
 class BaseListView(PermissionRequiredMixin, ListView):
     """
@@ -62,21 +63,52 @@ class BaseWriteView(PermissionRequiredMixin):
     
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
-        if not form.fields.get('faculty') or not form.fields.get('program'):
-            return form
-            
-        form.fields['faculty'].initial = self.request.session.get('selected_faculty')
-        form.fields['program'].initial = self.request.session.get('selected_program')
         user = self.request.user
-        if user.has_perm('users.access_global'):
-            return form
-        elif user.has_perm('users.access_faculty_wide'):
-            form.fields['faculty'].queryset = user.faculties.all()
-            form.fields['program'].queryset = Program.objects.filter(faculty__in=user.faculties.all())
-        else:
-            form.fields['faculty'].queryset = user.faculties.all()
-            form.fields['program'].queryset = user.programs.all()
-    
+        
+        faculty_field = form.fields.get('faculty')
+        if faculty_field:
+            faculty_field.initial = self.request.session.get('selected_faculty')
+            if user.has_perm('users.access_global'):
+                faculty_field.queryset = Faculty.objects.all()
+            else:
+                faculty_field.queryset = user.faculties.all()
+                
+        program_field = form.fields.get('program')
+        if program_field:
+            program_field.initial = self.request.session.get('selected_program')
+            if user.has_perm('users.access_global'):
+                program_field.queryset = Program.objects.all()
+            elif user.has_perm('users.access_faculty_wide'):
+                program_field.queryset = Program.objects.filter(faculty__in=user.faculties.all())
+            else:
+                program_field.queryset = user.programs.all()
+
+        # filter any related model with faculty and program
+        faculty_id = self.request.session.get('selected_faculty')
+        program_id = self.request.session.get('selected_program')
+        for field_name, field in form.fields.items():
+            # Get the actual field from the model
+            try: 
+                model_field = self.model._meta.get_field(field_name)
+                related_model = model_field.related_model
+                related_model_fields = [f.name for f in related_model._meta.fields]
+                queryset = related_model.objects.all()
+                
+                # Check if the related model has faculty and program fields
+                if 'faculty' in related_model_fields:
+                    queryset = queryset.filter(faculty_id=faculty_id)
+                if 'program' in related_model_fields:
+                    queryset = queryset.filter(program_id=program_id)
+                if 'faculties' in related_model_fields:
+                    queryset = queryset.filter(faculties_id=faculty_id)
+                if 'programs' in related_model_fields:
+                    queryset = queryset.filter(programs_id=program_id)
+                # Update the field's queryset
+                field.queryset = queryset
+
+            except:
+                continue
+        
         return form
 
 class BaseCreateView(BaseWriteView, CreateView):
@@ -84,10 +116,70 @@ class BaseCreateView(BaseWriteView, CreateView):
     Mixin for views that require permission to add an object.
     """
     template_name = 'core/generic_form.html'
+    
     def get_permission_required(self):
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.add_{self.model_name}']
+    
+    def get_form_class(self):
+        if self.form_class:
+            return self.form_class
+            
+        class DynamicForm(forms.ModelForm):
+            class Meta:
+                model = self.model
+                fields = self.fields or '__all__'
+                
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                if hasattr(self.Meta, 'flat_fields'):
+                    for field_name, field_list in self.Meta.flat_fields:
+                        # Get the field from the model
+                        field = self._meta.model._meta.get_field(field_name)
+                        # Get the related model class
+                        related_model = field.related_model
+                        # Add fields from the related model
+                        for field in field_list:
+                            self.fields[f'{field_name}__{field}'] = forms.CharField(
+                                label=f"{field_name.capitalize()} {field.replace('_', ' ')}",
+                                required=field in getattr(related_model._meta, 'required_fields', [])
+                            )
+
+        # Set the flat_fields on the Meta class if they exist
+        if hasattr(self, 'flat_fields'):
+            DynamicForm.Meta.flat_fields = self.flat_fields
+            
+        return DynamicForm
+        
+    def form_valid(self, form):
+        # Handle related objects before the main save
+        if hasattr(form.Meta, 'flat_fields'):
+            for field_name, field_list in form.Meta.flat_fields:
+                # check if the field name is selected or not, if yes, then we don't parse the flat fields
+                if field_name in form.cleaned_data:
+                    continue
+                # Get the field from the model
+                field = self.model._meta.get_field(field_name)
+                # Get the related model class
+                related_model = field.related_model
+                # Get data for related model
+                related_data = {}
+                for field in field_list:
+                    form_field = f'{field_name}__{field}'
+                    if form_field in form.cleaned_data:
+                        value = form.cleaned_data.pop(form_field)
+                        if value == '':
+                            value = None
+                        related_data[field] = value
+                
+                # Create related object if we have data
+                if related_data:
+                    related_obj = related_model.objects.create(**related_data)
+                    setattr(form.instance, field_name, related_obj)
+        
+        # Now call the parent's form_valid which will call form.save()
+        return super().form_valid(form)
 
 class BaseUpdateView(BaseWriteView, UpdateView):
     """

@@ -2,7 +2,6 @@ from django.db import models
 from django.db.models import Q
 from django.conf import settings
 from django_jsonform.models.fields import JSONField
-from apps.core.json_encoder import CustomJSONEncoder
 from apps.core.managers import RLSManager
 from apps.organization.mixins import FacultyNullMixin
 
@@ -40,7 +39,7 @@ class ActivityTemplate(models.Model):
     }
     
     name = models.CharField(max_length=255, unique=True)
-    template_json = JSONField(schema=TEMPLATE_SCHEMA, encoder=CustomJSONEncoder)
+    template_definition = JSONField(schema=TEMPLATE_SCHEMA)
 
     def __str__(self): 
         return self.name
@@ -50,10 +49,10 @@ class Activity(FacultyNullMixin):
     Stores user responses to activity templates with row-level security.
     """
     template = models.ForeignKey(ActivityTemplate, null=True, on_delete=models.SET_NULL)
-    response_json = models.JSONField()
+    response = models.JSONField()
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Last Updated At")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     objects = RLSManager()
 

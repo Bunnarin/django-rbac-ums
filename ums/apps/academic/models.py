@@ -1,6 +1,5 @@
 from django.db import models
 from django.db.models import Q
-from django_jsonform.models.fields import JSONField
 from apps.organization.mixins import OrganizationMixin
 from apps.users.models import Professor
 from apps.core.managers import RLSManager
@@ -38,7 +37,7 @@ class Class(OrganizationMixin):
                 self.name = self.name + " " + str(name_num)
         super().save(*args, **kwargs)
 
-class Schedule(OrganizationMixin):
+class Schedule(models.Model):
     """
     Stores the schedule for a professor for a course for a class
     """
@@ -62,4 +61,5 @@ class Schedule(OrganizationMixin):
         return f"{self.professor} - {self.course} - {self._class}"
     
     class Meta:
-        unique_together = ('professor', 'course', '_class', 'faculty', 'program')
+        unique_together = ('professor', 'course', '_class')
+        

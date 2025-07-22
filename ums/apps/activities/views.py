@@ -1,5 +1,4 @@
 from django.views.generic import ListView
-from django.shortcuts import get_object_or_404
 from apps.core.views import BaseDeleteView, BaseListView, BaseCreateView, BaseUpdateView
 from .models import Activity, ActivityTemplate
 from .forms import get_json_form
@@ -31,7 +30,7 @@ class ActivityCreateView(BaseCreateView):
     model = Activity
     def get_form(self):
         activity_template = ActivityTemplate.objects.get(pk=self.kwargs['template_pk'])
-        Form = get_json_form(activity_template.template_json)
+        Form = get_json_form(activity_template.template_definition)
         return Form(self.request.POST or None)
 
     def form_valid(self, form):

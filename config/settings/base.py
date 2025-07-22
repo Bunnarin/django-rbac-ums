@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
     # allauth
     'allauth',
     'allauth.account',
@@ -130,6 +131,7 @@ USE_TZ = True
 STATIC_URL = 'staticfiles/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [PROJECT_DIR / 'static'] # no idea why this is like this
+
 
 # Crispy forms configuration
 CRISPY_TEMPLATE_PACK = "bootstrap5"

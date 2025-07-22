@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.models import Q
+from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractUser, Group
 from phonenumber_field.modelfields import PhoneNumberField
 from apps.organization.mixins import OrganizationsNullMixin
@@ -25,10 +26,14 @@ class CustomUser(OrganizationsNullMixin, AbstractUser):
         First, make sure that if it's a new user, we set an unusable password
         Second, make sure that we can save multiple users with blank email (because the default can't for some reason)
         """
+        if self.is_superuser:
+            super().save(*args, **kwargs)
+            return
+
         creation = not self.pk
         if creation:
             self.set_unusable_password()
-
+        
         # if updating, we need to check if we really need to add to the name
         new_username = self.first_name + self.last_name
         if self.username != new_username:
@@ -38,7 +43,8 @@ class CustomUser(OrganizationsNullMixin, AbstractUser):
             else:
                 self.username = new_username
                 
-        # ensure that staff status always in staff group
+        # ensure that staff status always in staff group and if we create a first superuser it thor error for some reason
+        
         staff_group, _ = Group.objects.get_or_create(name="ALL STAFF")
         if self.is_staff:
             self.groups.add(staff_group)
@@ -67,3 +73,21 @@ class Student(ProfileMixin):
         on_delete=models.SET_NULL, 
         null=True, blank=True, 
         related_name='students')
+    
+    def clean(self):
+        if self._class and \
+            (self._class.faculty != self.faculty or \
+                 self._class.program != self.program):
+            raise ValidationError("Class must belong to the same faculty and program as the student.")
+
+    def save(self, *args, **kwargs):
+        """
+        automatically set the affiliation from the class's affiliation
+        and, add the affiliation to the user as well
+        """
+        self.faculty = self._class.faculty
+        self.program = self._class.program
+        
+        self.user.faculties.add(self.faculty)
+        self.user.programs.add(self.program)
+        super().save(*args, **kwargs)

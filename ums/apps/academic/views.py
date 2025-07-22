@@ -39,6 +39,7 @@ class ClassListView(BaseListView):
 
 class ClassCreateView(BaseCreateView):
     model = Class
+    fields = ['faculty', 'program', 'name']
 
 class ClassUpdateView(BaseUpdateView):
     model = Class
