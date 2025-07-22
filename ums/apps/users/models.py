@@ -27,15 +27,14 @@ class CustomUser(OrganizationsNullMixin, AbstractUser):
         Second, make sure that we can save multiple users with blank email (because the default can't for some reason)
         """
         if self.is_superuser:
-            super().save(*args, **kwargs)
-            return
+            return super().save(*args, **kwargs)
 
         creation = not self.pk
         if creation:
             self.set_unusable_password()
         
         # if updating, we need to check if we really need to add to the name
-        new_username = self.first_name + self.last_name
+        new_username = self.first_name.lower() + self.last_name.lower()
         if self.username != new_username:
             username_num = CustomUser.objects.filter(username__startswith=new_username).count()
             if username_num > 0:
@@ -85,9 +84,21 @@ class Student(ProfileMixin):
         automatically set the affiliation from the class's affiliation
         and, add the affiliation to the user as well
         """
-        self.faculty = self._class.faculty
-        self.program = self._class.program
+        if self._class:
+            self.faculty = self._class.faculty
+            self.program = self._class.program
         
         self.user.faculties.add(self.faculty)
         self.user.programs.add(self.program)
         super().save(*args, **kwargs)
+    
+    def delete(self, *args, **kwargs):
+        # remove the user if they don't have anymore profile associated (ONLY FOR STUDENT) for clean up purpose
+        if self.user.groups.count() == 1 and \
+            self.user.user_permissions.count() == 0 and \
+            not Student.objects.filter(user=self.user).exclude(pk=self.pk).exists():
+            self.user.delete()
+        else:
+            self.user.faculties.remove(self.faculty)
+            self.user.programs.remove(self.program)
+        super().delete(*args, **kwargs)

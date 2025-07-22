@@ -38,15 +38,16 @@
                     {% endif %}
                     </td>
                 {% endif %}
+                
                 {% for field in table_fields %}
                     <td>
-                        {% with field_value=obj|get_attr_from_object:field %}
-                            {% if field_value.get_absolute_url %}
-                                <a href="{{ field_value.get_absolute_url }}">{{ field_value }}</a>
-                            {% else %}
-                                {{ field_value|default:"" }}
-                            {% endif %}
-                        {% endwith %}
+                    {% with field_value=obj|get_attr_from_object:field %}
+                        {% if field_value.get_absolute_url %}
+                            <a href="{{ field_value.get_absolute_url }}">{{ field_value }}</a>
+                        {% else %}
+                            {{ field_value|default:"" }}
+                        {% endif %}
+                    {% endwith %}
                     </td>
                 {% endfor %}
                 </tr>
@@ -63,15 +64,16 @@
             $('#data-table').DataTable({
                 fixedHeader: true, // Optional: keeps header visible on scroll
                 initComplete: function() {
-                    // For each column
                     this.api()
                         .columns()
                         .every(function() {
                             var column = this;
                             var header = $(column.header()); // Get the header element
                             // Create input element
+                            var title = $('<p hidden>' + header.text().trim() + '</p>')
+                                .appendTo(header.empty());
                             var input = $('<input placeholder="' + header.text().trim() + '" />')
-                                .appendTo(header.empty()) // Empty existing header text and append input
+                                .appendTo(header) // Empty existing header text and append input
                                 .on('keyup change clear', function() {
                                     if (column.search() !== this.value) {
                                         column.search(this.value).draw();

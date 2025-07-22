@@ -30,7 +30,8 @@ class ProfileMixin(ProgramNullMixin):
     
     def delete(self, *args, **kwargs):
         profile_group = Group.objects.get(name=f"ALL {self.__class__.__name__.upper()}")
-        self.user.groups.remove(profile_group)
+        if self.user.pk:
+            self.user.groups.remove(profile_group)
         super().delete(*args, **kwargs)
 
     def get_user_rls_filter(self, user):
