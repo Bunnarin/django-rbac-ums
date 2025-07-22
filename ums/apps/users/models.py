@@ -88,8 +88,6 @@ class Student(ProfileMixin):
             self.faculty = self._class.faculty
             self.program = self._class.program
         
-        self.user.faculties.add(self.faculty)
-        self.user.programs.add(self.program)
         super().save(*args, **kwargs)
     
     def delete(self, *args, **kwargs):
@@ -98,7 +96,4 @@ class Student(ProfileMixin):
             self.user.user_permissions.count() == 0 and \
             not Student.objects.filter(user=self.user).exclude(pk=self.pk).exists():
             self.user.delete()
-        else:
-            self.user.faculties.remove(self.faculty)
-            self.user.programs.remove(self.program)
         super().delete(*args, **kwargs)

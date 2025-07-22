@@ -12,7 +12,7 @@ class ActivityTemplate(models.Model):
     
     Attributes:
         name: Unique name for the template
-        template: JSON field storing the template structure
+        template_definition: JSON field storing the template structure
     """
     TEMPLATE_SCHEMA = {
         "type": "array",

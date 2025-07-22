@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django_jsonform',
     'crispy_forms',
     'crispy_bootstrap5',
+    'bulk_update_or_create',
     # custom apps
     'apps.core',
     'apps.academic',

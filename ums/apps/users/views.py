@@ -4,7 +4,6 @@ from .models import Student, Professor, CustomUser
 
 class UserListView(BaseListView):
     model = CustomUser
-    actions = ['add', 'change', 'delete']
     table_fields = ['username', 'first_name', 'last_name', 'email', 'phone_number']
 
 class UserCreateView(BaseCreateView):
@@ -47,7 +46,6 @@ class UserDeleteView(BaseDeleteView):
 
 class StudentListView(BaseListView):
     model = Student
-    actions = ['add', 'change', 'delete']
     table_fields = ['user', '_class', 'faculty', 'program']
 
 class StudentCreateView(BaseCreateView):
@@ -62,7 +60,6 @@ class StudentDeleteView(BaseDeleteView):
 
 class ProfessorListView(BaseListView):
     model = Professor
-    actions = ['add', 'change', 'delete']
     table_fields = ['user', 'faculty', 'program']
 
 class ProfessorCreateView(BaseCreateView):

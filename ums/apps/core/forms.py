@@ -1,23 +1,23 @@
 from django import forms
 from django_jsonform.widgets import JSONFormWidget
-from .models import Activity
 
 def translate_json_to_schema(template_json):
+    schema = {
+        "type": "object",
+        "keys": {}
+    }
+
     # the rest is string
     type_map = {
         "integer": "integer",
         "number": "number",
         "checkbox": "array",
     }
-    schema = {
-        "type": "object",
-        "keys": {}
-    }
     for field in template_json:
         schema['keys'][field['title']] = {}
         key = schema['keys'][field['title']]
 
-        key["type"] = type_map[field['type']] if field['type'] in type_map else "string"
+        key["type"] = type_map.get(field['type']) or "string"
         key["required"] = field['required']
 
         match field['type']:
@@ -35,14 +35,14 @@ def translate_json_to_schema(template_json):
                 }
     return schema
 
-def get_json_form(template_json):
-    class ActivityForm(forms.ModelForm):
+def get_json_form(template_json, model, fields, json_field):
+    class JsonForm(forms.ModelForm):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.schema = translate_json_to_schema(template_json)
-            self.fields['response'].widget = JSONFormWidget(schema=self.schema)
-
-        class Meta:
-            model = Activity
-            fields = ['faculty', 'response']
-    return ActivityForm
+            self.fields[json_field].widget = JSONFormWidget(
+                schema=translate_json_to_schema(template_json)
+            )
+    
+    MetaClass = type('Meta', (), {'model': model, 'fields': fields})
+    JsonFormClass = type('JsonForm', (JsonForm,), {'Meta': MetaClass})
+    return JsonFormClass

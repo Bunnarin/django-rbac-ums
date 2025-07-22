@@ -15,8 +15,10 @@ urlpatterns = [
     path('classes/change/<int:pk>/', views.ClassUpdateView.as_view(), name='change_class'),
     path('classes/delete/<int:pk>/', views.ClassDeleteView.as_view(), name='delete_class'),
     # course assignment
-    path('schedule/', views.ScheduleListView.as_view(), name='view_schedule'),
-    path('schedule/create/', views.ScheduleCreateView.as_view(), name='add_schedule'),
-    path('schedule/change/<int:pk>/', views.ScheduleUpdateView.as_view(), name='change_schedule'),
-    path('schedule/delete/<int:pk>/', views.ScheduleDeleteView.as_view(), name='delete_schedule'),
+    path('schedules/', views.ScheduleListView.as_view(), name='view_schedule'),
+    path('schedules/create/', views.ScheduleCreateView.as_view(), name='add_schedule'),
+    path('schedules/change/<int:pk>/', views.ScheduleUpdateView.as_view(), name='change_schedule'),
+    path('schedules/delete/<int:pk>/', views.ScheduleDeleteView.as_view(), name='delete_schedule'),
+    # score
+    path('scores/add/<int:schedule_pk>/', views.ScoreBulkEditView.as_view(), name='add_score'),
 ]

@@ -1,11 +1,12 @@
 from django.db import models
 from django.db.models import Q
+from bulk_update_or_create import BulkUpdateOrCreateQuerySet
 from apps.organization.mixins import OrganizationMixin
-from apps.users.models import Professor
+from apps.users.models import Professor, Student
 from apps.core.managers import RLSManager
-from apps.core.mixins import EditableMixin
+from apps.core.mixins import DetailMixin
 
-class Course(EditableMixin, OrganizationMixin):
+class Course(DetailMixin, OrganizationMixin):
     name = models.CharField(max_length=255)
 
     objects = RLSManager()
@@ -16,7 +17,7 @@ class Course(EditableMixin, OrganizationMixin):
     class Meta:
         unique_together = ('faculty', 'program', 'name')
 
-class Class(EditableMixin, OrganizationMixin):
+class Class(DetailMixin, OrganizationMixin):
     name = models.CharField(max_length=255)
 
     objects = RLSManager()
@@ -38,20 +39,20 @@ class Class(EditableMixin, OrganizationMixin):
                 self.name = self.name + " " + str(name_num)
         super().save(*args, **kwargs)
 
-class Schedule(EditableMixin, models.Model):
+class Schedule(DetailMixin, models.Model):
     """
     Stores the schedule for a professor for a course for a class
     """
     professor = models.ForeignKey(Professor, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     _class = models.ForeignKey(Class, on_delete=models.CASCADE)
-    monday = models.CharField(max_length=255, null=True, blank=True)
-    tuesday = models.CharField(max_length=255, null=True, blank=True)
-    wednesday = models.CharField(max_length=255, null=True, blank=True)
-    thursday = models.CharField(max_length=255, null=True, blank=True)
-    friday = models.CharField(max_length=255, null=True, blank=True)
-    saturday = models.CharField(max_length=255, null=True, blank=True)
-    sunday = models.CharField(max_length=255, null=True, blank=True)
+    monday = models.CharField(max_length=13, null=True, blank=True)
+    tuesday = models.CharField(max_length=13, null=True, blank=True)
+    wednesday = models.CharField(max_length=13, null=True, blank=True)
+    thursday = models.CharField(max_length=13, null=True, blank=True)
+    friday = models.CharField(max_length=13, null=True, blank=True)
+    saturday = models.CharField(max_length=13, null=True, blank=True)
+    sunday = models.CharField(max_length=13, null=True, blank=True)
 
     objects = RLSManager()
 
@@ -63,4 +64,14 @@ class Schedule(EditableMixin, models.Model):
     
     class Meta:
         unique_together = ('professor', 'course', '_class')
+
+class Score(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    score = models.IntegerField()
+
+    objects = BulkUpdateOrCreateQuerySet.as_manager()
+
+    class Meta:
+        unique_together = ('student', 'course')
         

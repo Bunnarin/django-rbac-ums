@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.views.generic import ListView, DeleteView, CreateView, UpdateView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.decorators.http import require_POST
-from django.shortcuts import redirect
+from django.shortcuts import redirect, reverse
 from apps.organization.models import Faculty, Program
 from django import forms
 
@@ -12,6 +12,7 @@ class BaseListView(PermissionRequiredMixin, ListView):
     Base view for displaying a list of objects.
     """
     model = None
+    cruds = ["add", "change", "delete"]
     actions = []
     template_name = 'core/generic_list.html'
     table_fields = []
@@ -31,13 +32,19 @@ class BaseListView(PermissionRequiredMixin, ListView):
         # Add table configuration
         context['table_fields'] = self.table_fields
         
-        # Set up action URLs
+        # Set up URLs
         user = self.request.user
-        for action in self.actions:
+        for action in self.cruds:
             permission = f"{self.app_label}.{action}_{self.model_name}"
             if user.has_perm(permission):
-                url = permission.replace('.', ':')
+                url = permission.replace('.', ':')  
                 context[f"{action}_url"] = url
+        
+        # set up action URLs
+        for action, url in self.actions:
+            permission = url.replace(':', '.')
+            if user.has_perm(permission):
+                context["actions"] = {action: url}
 
         return context
         
@@ -87,10 +94,8 @@ class BaseWriteView(PermissionRequiredMixin):
         faculty_id = self.request.session.get('selected_faculty')
         program_id = self.request.session.get('selected_program')
         for field_name, field in form.fields.items():
-            # Get the actual field from the model
             try: 
-                model_field = self.model._meta.get_field(field_name)
-                related_model = model_field.related_model
+                related_model = self.model._meta.get_field(field_name).related_model
                 related_model_fields = [f.name for f in related_model._meta.fields]
                 queryset = related_model.objects.all()
                 
@@ -99,13 +104,7 @@ class BaseWriteView(PermissionRequiredMixin):
                     queryset = queryset.filter(faculty_id=faculty_id)
                 if 'program' in related_model_fields:
                     queryset = queryset.filter(program_id=program_id)
-                if 'faculties' in related_model_fields:
-                    queryset = queryset.filter(faculties_id=faculty_id)
-                if 'programs' in related_model_fields:
-                    queryset = queryset.filter(programs_id=program_id)
-                # Update the field's queryset
                 field.queryset = queryset
-
             except:
                 continue
         
