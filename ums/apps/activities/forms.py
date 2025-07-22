@@ -40,9 +40,9 @@ def get_json_form(template_json):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.schema = translate_json_to_schema(template_json)
-            self.fields['response_json'].widget = JSONFormWidget(schema=self.schema)
+            self.fields['response'].widget = JSONFormWidget(schema=self.schema)
 
         class Meta:
             model = Activity
-            fields = ['faculty', 'response_json']
+            fields = ['faculty', 'response']
     return ActivityForm

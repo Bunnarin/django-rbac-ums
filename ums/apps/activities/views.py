@@ -9,7 +9,7 @@ class ActivityListView(BaseListView):
     """
     model = Activity
     actions = ["add", "delete"]
-    table_fields = ['author', 'template', 'faculty', 'response_json']
+    table_fields = ['author', 'template', 'faculty', 'response']
 
 class ActivityTemplateSelectView(ListView):
     """
@@ -31,7 +31,7 @@ class ActivityCreateView(BaseCreateView):
     def get_form(self):
         activity_template = ActivityTemplate.objects.get(pk=self.kwargs['template_pk'])
         Form = get_json_form(activity_template.template_definition)
-        return Form(self.request.POST or None)
+        return super().get_form(form_class=Form)
 
     def form_valid(self, form):
         form.instance.template = ActivityTemplate.objects.get(pk=self.kwargs['template_pk'])

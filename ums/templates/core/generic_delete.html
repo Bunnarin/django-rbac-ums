@@ -1,13 +1,11 @@
 {% extends 'base.html' %} {# Extend your base template if you have one #}
 
 {% block content %}
-    <div class="container mt-4">
-        <p>Are you sure you want to delete: "<strong>{{ object }}</strong>"?</p>
-        <p class="text-danger">This action cannot be undone.</p>
+    <p>Are you sure you want to delete: "<strong>{{ object }}</strong>"?</p>
+    <p class="text-danger">This action cannot be undone.</p>
 
-        <form method="post">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-danger">Yes, Delete</button>
-        </form>
-    </div>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+    </form>
 {% endblock %}

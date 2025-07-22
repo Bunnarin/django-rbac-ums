@@ -145,6 +145,8 @@ class BaseCreateView(BaseWriteView, CreateView):
                                 label=f"{field_name.capitalize()} {field.replace('_', ' ')}",
                                 required=field in getattr(related_model._meta, 'required_fields', [])
                             )
+                        # make the default field name optional
+                        self.fields[field_name].required = False
 
         # Set the flat_fields on the Meta class if they exist
         if hasattr(self, 'flat_fields'):
@@ -157,7 +159,7 @@ class BaseCreateView(BaseWriteView, CreateView):
         if hasattr(form.Meta, 'flat_fields'):
             for field_name, field_list in form.Meta.flat_fields:
                 # check if the field name is selected or not, if yes, then we don't parse the flat fields
-                if field_name in form.cleaned_data:
+                if form.cleaned_data.get(field_name):
                     continue
                 # Get the field from the model
                 field = self.model._meta.get_field(field_name)

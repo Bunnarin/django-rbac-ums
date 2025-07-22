@@ -15,7 +15,7 @@ class ActivityTemplateFactory(DjangoModelFactory):
         django_get_or_create = ('name',)
 
     name = Faker('sentence', nb_words=4)
-    template_json = json.dumps([
+    template = json.dumps([
         {
            "label": Faker('sentence'),
            "type": question_type,
@@ -39,7 +39,7 @@ class ActivityFactory(DjangoModelFactory):
                 "response": _generate_response(question)
                 for question in section["questions"]
             }]
-        } for section in o.template.template_json["sections"]]
+        } for section in o.template.template_definition["sections"]]
     })
 
 def _generate_response(question):
