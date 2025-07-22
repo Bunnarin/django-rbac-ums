@@ -6,55 +6,23 @@
         {% if add_url %}
             <a href="{% url add_url %}" class="btn btn-primary">Add</a>
         {% endif %}
-        <button class="btn" onclick="exportToExcel('xlsx')">Export</button>
+        <button class="btn" onclick="
+        XLSX.writeFile(XLSX.utils.table_to_book($('#data-table')[0]), 'export.xlsx')
+        ">Export</button>
     </div>
 
-    <!-- Search and Filter Section -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h6 class="mb-0">
-                <button class="btn btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false" aria-controls="filterCollapse">
-                    Filters & Search
-                </button>
-            </h6>
-        </div>
-        <div class="collapse" id="filterCollapse">
-            <div class="card-body">
-                <div class="row">
-                    {% for header in table_fields %}
-                        <div class="col-md-6 col-lg-4 mb-3">
-                            <label for="filter_{{ forloop.counter0 }}" class="form-label">{{ header }}</label>
-                            <input type="text" 
-                                   class="form-control filter-input" 
-                                   id="filter_{{ forloop.counter0 }}" 
-                                   placeholder="Search {{ header }}..."
-                                   data-column="{{ forloop.counter0 }}">
-                        </div>
-                    {% endfor %}
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-secondary" id="clearFilters">Clear All</button>
-                </div>
-                
-                <!-- Active Filters Display -->
-                <div id="activeFilters" class="mt-3"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Table Section -->
     <div class="table-responsive">
         <table class="table table-striped table-hover table-bordered" id="data-table">
             <thead>
                 <tr>
-                    {% if change_url or delete_url %}
-                        <th>Actions</th>
-                    {% endif %}
-                    {% for field in table_fields %}
-                        <th class="{% if field in group_by %}d-none{% endif %}">
-                            {{ field|title }}
-                        </th>
-                    {% endfor %}
+                {% if change_url or delete_url %}
+                    <th>Actions</th>
+                {% endif %}
+                {% for field in table_fields %}
+                    <th>
+                        {{ field|title }}
+                    </th>
+                {% endfor %}
                 </tr>
             </thead>
             <tbody>
@@ -62,176 +30,56 @@
                 <tr>
                 {% if change_url or delete_url %}
                     <td>
-                        {% if change_url %}
-                            <a href="{% url change_url obj.pk %}" class="btn btn-sm btn-info">✏️</a>
-                        {% endif %}
-                        {% if delete_url %}
-                            <a href="{% url delete_url obj.pk %}" class="btn btn-sm btn-danger">🗑️</a>
-                        {% endif %}
+                    {% if change_url %}
+                        <a href="{% url change_url obj.pk %}" class="btn btn-sm btn-info">✏️</a>
+                    {% endif %}
+                    {% if delete_url %}
+                        <a href="{% url delete_url obj.pk %}" class="btn btn-sm btn-danger">🗑️</a>
+                    {% endif %}
                     </td>
                 {% endif %}
                 {% for field in table_fields %}
-                    <td>{{ obj|get_attr_from_object:field }}</td>
+                    <td>
+                        {% with field_value=obj|get_attr_from_object:field %}
+                            {% if field_value.get_absolute_url %}
+                                <a href="{{ field_value.get_absolute_url }}">{{ field_value }}</a>
+                            {% else %}
+                                {{ field_value|default:"" }}
+                            {% endif %}
+                        {% endwith %}
+                    </td>
                 {% endfor %}
                 </tr>
             {% endfor %}
             </tbody>
         </table>
     </div>
-
-    <!-- Results Info -->
-    <div class="mt-3">
-        <small class="text-muted">
-            Showing <span id="visibleRows">0</span> of <span id="totalRows">0</span> records
-        </small>
-    </div>
 {% endblock %}
 
 {% block extra_js %}
-    <!-- Code for filtering -->
+    <!-- Code for filtering with data table -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const filterInputs = document.querySelectorAll('.filter-input');
-            const clearFiltersBtn = document.getElementById('clearFilters');
-            const activeFiltersDiv = document.getElementById('activeFilters');
-            const dataTable = document.getElementById('data-table');
-            const tbody = dataTable.querySelector('tbody');
-            const allRows = Array.from(tbody.querySelectorAll('tr'));
-            const visibleRowsSpan = document.getElementById('visibleRows');
-            const totalRowsSpan = document.getElementById('totalRows');
-            
-            // Get the number of columns from the header row (subtract 1 for actions column)
-            const numDataColumns = dataTable.querySelector('thead th').length - 1;
-            
-            let debounceTimer;
-        
-            // Initialize
-            updateActiveFilters();
-            updateRowCounts();
-        
-            // Live filtering with debounce
-            filterInputs.forEach(input => {
-                input.addEventListener('input', function() {
-                    clearTimeout(debounceTimer);
-                    debounceTimer = setTimeout(applyFilters, 300);
-                });
-            });
-        
-            // Clear all filters
-            clearFiltersBtn.addEventListener('click', function() {
-                filterInputs.forEach(input => input.value = '');
-                applyFilters();
-                updateActiveFilters();
-            });
-        
-            function applyFilters() {
-                const filters = [];
-                let hasActiveFilters = false;
-        
-                // Collect active filters with their column indices
-                filterInputs.forEach((input, filterIndex) => {
-                    const value = input.value.trim().toLowerCase();
-                    if (value) {
-                        // Map filter index to data column index (add 1 to skip actions column)
-                        const columnIndex = filterIndex + 1;
-                        filters.push({
-                            columnIndex: columnIndex,
-                            value: value
+        $(document).ready(function() {
+            $('#data-table').DataTable({
+                fixedHeader: true, // Optional: keeps header visible on scroll
+                initComplete: function() {
+                    // For each column
+                    this.api()
+                        .columns()
+                        .every(function() {
+                            var column = this;
+                            var header = $(column.header()); // Get the header element
+                            // Create input element
+                            var input = $('<input placeholder="' + header.text().trim() + '" />')
+                                .appendTo(header.empty()) // Empty existing header text and append input
+                                .on('keyup change clear', function() {
+                                    if (column.search() !== this.value) {
+                                        column.search(this.value).draw();
+                                    }
+                                });
                         });
-                        hasActiveFilters = true;
-                    }
-                });
-        
-                // Show/hide rows based on filters
-                let visibleCount = 0;
-                allRows.forEach(row => {
-                    let shouldShow = true;
-        
-                    if (hasActiveFilters) {
-                        for (const filter of filters) {
-                            // Skip if we've already determined this row should be hidden
-                            if (!shouldShow) break;
-                            
-                            const cell = row.cells[filter.columnIndex];
-                            // Skip if this is the actions column
-                            if (cell.querySelector('a, button, .btn')) continue;
-                            
-                            const cellText = cell.textContent.trim().toLowerCase();
-                            if (!cellText.includes(filter.value)) {
-                                shouldShow = false;
-                            }
-                        }
-                    }
-        
-                    if (shouldShow) {
-                        row.style.display = '';
-                        visibleCount++;
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-        
-                updateRowCounts(visibleCount);
-                updateActiveFilters();
-            }
-        
-            function updateActiveFilters() {
-                const activeFilters = [];
-                const headers = [{% for header in table_fields %}'{{ header }}'{% if not forloop.last %},{% endif %}{% endfor %}];
-                
-                filterInputs.forEach((input, index) => {
-                    const value = input.value.trim();
-                    if (value) {
-                        activeFilters.push({
-                            column: headers[index],
-                            value: value,
-                            index: index
-                        });
-                    }
-                });
-        
-                if (activeFilters.length > 0) {
-                    let filtersHtml = '<div class="d-flex flex-wrap gap-2 align-items-center"><small class="text-muted me-2">Active filters:</small>';
-                    activeFilters.forEach(filter => {
-                        filtersHtml += `
-                            <span class="badge bg-primary d-flex align-items-center gap-1">
-                                <strong>${filter.column}:</strong> ${filter.value}
-                                <button type="button" class="btn-close btn-close-white" style="font-size: 0.7em;" 
-                                        onclick="removeFilter(${filter.index})" aria-label="Remove filter"></button>
-                            </span>
-                        `;
-                    });
-                    filtersHtml += '</div>';
-                    activeFiltersDiv.innerHTML = filtersHtml;
-                } else {
-                    activeFiltersDiv.innerHTML = '';
                 }
-            }
-            function updateRowCounts(visibleCount = null) {
-                if (visibleCount === null) {
-                    visibleCount = allRows.filter(row => row.style.display !== 'none').length;
-                }
-                visibleRowsSpan.textContent = visibleCount;
-                totalRowsSpan.textContent = allRows.length;
-            }
-        
-            // Global function for removing individual filters
-            window.removeFilter = function(index) {
-                filterInputs[index].value = '';
-                applyFilters();
-                updateActiveFilters();
-            };
+            });
         });
-    </script>
-
-    <!-- Code for exporting -->
-    <script type="text/javascript" src="https://cdn.sheetjs.com/xlsx-latest/package/dist/shim.min.js"></script>
-    <script type="text/javascript" src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <script>
-        function exportToExcel(type, fn) {
-            var elt = document.getElementById('data-table');
-            var wb = XLSX.utils.table_to_book(elt, {sheet:"Sheet JS"});
-            XLSX.writeFile(wb, fn || ('SheetJSTableExport.' + (type || 'xlsx')));
-        }
     </script>
 {% endblock %}

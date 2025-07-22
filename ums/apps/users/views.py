@@ -67,7 +67,6 @@ class ProfessorListView(BaseListView):
 
 class ProfessorCreateView(BaseCreateView):
     model = Professor
-    fields = ['user', 'faculty', 'program']
     flat_fields = [('user', ['first_name', 'last_name', 'email', 'phone_number'])]
 
 class ProfessorUpdateView(BaseUpdateView):

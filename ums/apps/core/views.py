@@ -123,22 +123,27 @@ class BaseCreateView(BaseWriteView, CreateView):
         return [f'{self.app_label}.add_{self.model_name}']
     
     def get_form_class(self):
+        # allows for custom form_class
         if self.form_class:
             return self.form_class
+        
+        if not hasattr(self, 'flat_fields'):
+            return super().get_form_class()
             
+        # this intercept the default model form and make changes 
         class DynamicForm(forms.ModelForm):
             class Meta:
                 model = self.model
                 fields = self.fields or '__all__'
+                flat_fields = self.flat_fields
                 
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
                 if hasattr(self.Meta, 'flat_fields'):
                     for field_name, field_list in self.Meta.flat_fields:
-                        # Get the field from the model
-                        field = self._meta.model._meta.get_field(field_name)
-                        # Get the related model class
-                        related_model = field.related_model
+                        # Get the model of the flat field
+                        flat_field = self._meta.model._meta.get_field(field_name)
+                        related_model = flat_field.related_model
                         # Add fields from the related model
                         for field in field_list:
                             self.fields[f'{field_name}__{field}'] = forms.CharField(
@@ -146,25 +151,20 @@ class BaseCreateView(BaseWriteView, CreateView):
                                 required=field in getattr(related_model._meta, 'required_fields', [])
                             )
                         # make the default field name optional
-                        self.fields[field_name].required = False
-
-        # Set the flat_fields on the Meta class if they exist
-        if hasattr(self, 'flat_fields'):
-            DynamicForm.Meta.flat_fields = self.flat_fields
-            
+                        if self.fields.get(field_name):
+                            self.fields[field_name].required = False
         return DynamicForm
         
     def form_valid(self, form):
         # Handle related objects before the main save
         if hasattr(form.Meta, 'flat_fields'):
             for field_name, field_list in form.Meta.flat_fields:
-                # check if the field name is selected or not, if yes, then we don't parse the flat fields
+                # if user select the flat field, then we don't parse the expanded fields
                 if form.cleaned_data.get(field_name):
                     continue
-                # Get the field from the model
-                field = self.model._meta.get_field(field_name)
-                # Get the related model class
-                related_model = field.related_model
+                # Get the model for the flat field
+                flat_field = self.model._meta.get_field(field_name)
+                related_model = flat_field.related_model
                 # Get data for related model
                 related_data = {}
                 for field in field_list:

@@ -3,8 +3,9 @@ from django.db.models import Q
 from apps.organization.mixins import OrganizationMixin
 from apps.users.models import Professor
 from apps.core.managers import RLSManager
+from apps.core.mixins import EditableMixin
 
-class Course(OrganizationMixin):
+class Course(EditableMixin, OrganizationMixin):
     name = models.CharField(max_length=255)
 
     objects = RLSManager()
@@ -15,7 +16,7 @@ class Course(OrganizationMixin):
     class Meta:
         unique_together = ('faculty', 'program', 'name')
 
-class Class(OrganizationMixin):
+class Class(EditableMixin, OrganizationMixin):
     name = models.CharField(max_length=255)
 
     objects = RLSManager()
@@ -37,7 +38,7 @@ class Class(OrganizationMixin):
                 self.name = self.name + " " + str(name_num)
         super().save(*args, **kwargs)
 
-class Schedule(models.Model):
+class Schedule(EditableMixin, models.Model):
     """
     Stores the schedule for a professor for a course for a class
     """
