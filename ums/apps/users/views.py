@@ -50,7 +50,7 @@ class StudentListView(BaseListView):
 
 class StudentCreateView(BaseCreateView):
     model = Student
-    flat_fields = [('user', ['first_name', 'last_name', 'email', 'phone_number'])]
+    flat_fields = [('user', ['first_name', 'last_name', 'phone_number'])]
 
 class StudentUpdateView(BaseUpdateView):
     model = Student
@@ -64,7 +64,7 @@ class ProfessorListView(BaseListView):
 
 class ProfessorCreateView(BaseCreateView):
     model = Professor
-    flat_fields = [('user', ['first_name', 'last_name', 'email', 'phone_number'])]
+    flat_fields = [('user', ['first_name', 'last_name', 'email'])]
 
 class ProfessorUpdateView(BaseUpdateView):
     model = Professor

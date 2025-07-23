@@ -14,7 +14,7 @@ def organization_data(request):
         context['all_programs'] = Program.objects.all()
     elif user.has_perm('users.access_faculty_wide'):
         context['all_faculties'] = user.faculties.all()
-        context['all_programs'] = Program.objects.filter(faculty__in=user.faculties.all()).all()
+        context['all_programs'] = Program.objects.select_related('faculty').filter(faculty__in=user.faculties.all())
     else:
         context['all_faculties'] = user.faculties.all()
         context['all_programs'] = user.programs.all()

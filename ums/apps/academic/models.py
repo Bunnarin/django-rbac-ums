@@ -54,8 +54,6 @@ class Schedule(DetailMixin, models.Model):
     saturday = models.CharField(max_length=13, null=True, blank=True)
     sunday = models.CharField(max_length=13, null=True, blank=True)
 
-    objects = RLSManager()
-
     def get_user_rls_filter(self, user):
         return Q(_class__students__user=user) | Q(professor__user=user)
     

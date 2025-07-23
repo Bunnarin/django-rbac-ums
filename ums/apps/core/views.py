@@ -49,9 +49,23 @@ class BaseListView(PermissionRequiredMixin, ListView):
         return context
         
     def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Apply RLS filtering if available
         if hasattr(self.model.objects, "for_user"):
-            return self.model.objects.for_user(self.request)
-        return super().get_queryset()
+            queryset = self.model.objects.for_user(self.request)
+        
+        # Get all foreign key fields
+        foreign_keys = [
+            field.name for field in self.model._meta.get_fields()
+            if field.is_relation and field.many_to_one and field.concrete
+        ]
+        
+        # Apply select_related if we have any foreign keys
+        if foreign_keys:
+            queryset = queryset.select_related(*foreign_keys)
+        
+        return queryset
 
 class BaseWriteView(PermissionRequiredMixin):
     """
@@ -64,9 +78,23 @@ class BaseWriteView(PermissionRequiredMixin):
         return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
     
     def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Apply RLS filtering if available
         if hasattr(self.model.objects, "for_user"):
-            return self.model.objects.for_user(self.request)
-        return super().get_queryset()
+            queryset = self.model.objects.for_user(self.request)
+        
+        # Get all foreign key fields
+        foreign_keys = [
+            field.name for field in self.model._meta.get_fields()
+            if field.is_relation and field.many_to_one and field.concrete
+        ]
+        
+        # Apply select_related if we have any foreign keys
+        if foreign_keys:
+            queryset = queryset.select_related(*foreign_keys)
+        
+        return queryset
     
     def get_form(self, form_class=None):
         form = super().get_form(form_class)

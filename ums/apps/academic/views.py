@@ -1,10 +1,11 @@
-from django.views import View
+from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.views.generic import FormView
+from django.db import transaction
+from django.urls import reverse_lazy
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView
 from .models import Course, Class, Schedule, Score
-from django.shortcuts import redirect
-from django.forms import ModelForm, IntegerField
-from django.db import transaction
-from django.shortcuts import render
+from .forms import create_score_form_class
+
 
 class CourseListView(BaseListView):
     model = Course
@@ -50,79 +51,41 @@ class ClassUpdateView(BaseUpdateView):
 class ClassDeleteView(BaseDeleteView):
     model = Class
 
-class ScoreBulkEditView(View):
+class ScoreBulkEditView(PermissionRequiredMixin, FormView):
     """
     View for bulk creating/updating scores for all students in a class.
-    Handles both create and update operations using bulk_update_or_create.
     """
     template_name = 'core/generic_form.html'
-    
-    def create_form_class(self, students):
-        """Create a dynamic form class with score fields for each student"""
-        class ScoreBulkForm(ModelForm):
-            def __init__(self, *args, **kwargs):
-                existing_scores = kwargs.pop('existing_scores', {})
-                super().__init__(*args, **kwargs)
-                
-                # Add score field for each student
-                for student in students:
-                    initial_value = existing_scores.get(student.id)
-                    initial_score = initial_value.score if initial_value else 0
-                    
-                    self.fields[f'score_{student.id}'] = IntegerField(
-                        label=f'{student.user.first_name} {student.user.last_name}',
-                        min_value=0,
-                        max_value=100,
-                        initial=initial_score,
-                    )
-            
-            class Meta:
-                model = Score
-                fields = []  # We'll add fields dynamically
-        
-        return ScoreBulkForm
-    
-    def get(self, request, *args, **kwargs):
-        schedule = Schedule.objects.get(pk=self.kwargs['schedule_pk'])
-        students = schedule._class.students.all()
-        existing_scores = {
+    permission_required = 'academic.add_score'
+    success_url = reverse_lazy('academic:view_schedule')
+
+    def get_form(self):
+        self.schedule = Schedule.objects.select_related('course', '_class').get(pk=self.kwargs['schedule_pk'])
+        self.students = self.schedule._class.students.all()
+        self.existing_scores = {
             score.student_id: score 
-            for score in Score.objects.filter(student__in=students, course=schedule.course)
+            for score in Score.objects.filter(
+                student__in=self.students, course=self.schedule.course
+                )
         }
-        
-        form_class = self.create_form_class(students)
-        form = form_class(existing_scores=existing_scores)
-        
-        context = {
-            'form': form,
-            'title':f'Score for class: {schedule._class} course: {schedule.course}'
-        }
-        return render(request, self.template_name, context)
+        form_class = create_score_form_class(self.students)
+        form = form_class(self.request.POST or None, existing_scores=self.existing_scores)
+        return form
     
     @transaction.atomic
-    def post(self, request, *args, **kwargs):       
-        schedule = Schedule.objects.get(pk=self.kwargs['schedule_pk'])
-        students = schedule._class.students.all()
-        existing_scores = {
-            score.student_id: score 
-            for score in Score.objects.filter(student__in=students, course=schedule.course)
-        }
-        
-        form_class = self.create_form_class(students)
-        form = form_class(request.POST, existing_scores=existing_scores)
-        
+    def form_valid(self, form):
         if form.is_valid():
-            # Prepare score objects for bulk operation
             score_objects = []
-            for student in students:
+            for student in self.students:
                 score_value = form.cleaned_data.get(f'score_{student.id}')
                 # Only process if score is different from inital value
-                if score_value != existing_scores.get(student.id):
-                    score_objects.append(Score(
-                        student=student,
-                        course=schedule.course,
-                        score=score_value
-                    ))
+                if score_value == self.existing_scores.get(student.id):
+                    continue
+                score_objects.append(Score(
+                    student=student,
+                    course=self.schedule.course,
+                    score=score_value
+                ))
             
             # Use bulk_update_or_create to handle both create and update
             if score_objects:
@@ -131,11 +94,4 @@ class ScoreBulkEditView(View):
                     ['score'],  # Fields to update
                     match_field='student'  # Field to match on for updates
                 )
-            
-            return redirect('academic:view_schedule')
-        
-        context = {
-            'form': form,
-            'title':f'Score for class: {schedule._class} course: {schedule.course}'
-        }
-        return render(request, self.template_name, context)
+        return super().form_valid(form)
