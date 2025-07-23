@@ -9,13 +9,14 @@ class OrganizationMixin(models.Model):
     faculty = models.ForeignKey(Faculty, on_delete=models.PROTECT,)
     program = models.ForeignKey(Program, on_delete=models.PROTECT,)
 
-    def clean(self):
+    def save(self, *args, **kwargs):
         """
         Validate that the selected program belongs to the selected faculty.
+        we do it in save and not clean because the form needs to inject affiliation after the clean
         """
-        super().clean()
         if self.faculty != self.program.faculty:
             raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
+        super().save(*args, **kwargs)
     
     class Meta:
         abstract = True

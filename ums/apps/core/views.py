@@ -44,7 +44,8 @@ class BaseListView(PermissionRequiredMixin, ListView):
         for action, url in self.actions:
             permission = url.replace(':', '.')
             if user.has_perm(permission):
-                context["actions"] = {action: url}
+                context["actions"] = {}
+                context["actions"][action] = url
 
         return context
         
@@ -98,29 +99,11 @@ class BaseWriteView(PermissionRequiredMixin):
     
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
-        user = self.request.user
-        
-        faculty_field = form.fields.get('faculty')
-        if faculty_field:
-            faculty_field.initial = self.request.session.get('selected_faculty')
-            if user.has_perm('users.access_global'):
-                faculty_field.queryset = Faculty.objects.all()
-            else:
-                faculty_field.queryset = user.faculties.all()
-                
-        program_field = form.fields.get('program')
-        if program_field:
-            program_field.initial = self.request.session.get('selected_program')
-            if user.has_perm('users.access_global'):
-                program_field.queryset = Program.objects.all()
-            elif user.has_perm('users.access_faculty_wide'):
-                program_field.queryset = Program.objects.filter(faculty__in=user.faculties.all())
-            else:
-                program_field.queryset = user.programs.all()
-
+        # remove the faculty and program field cuz we gonna inject them instead
+        form.fields.pop('faculty', None)
+        form.fields.pop('program', None)
         # filter any related model with faculty and program
-        faculty_id = self.request.session.get('selected_faculty')
-        program_id = self.request.session.get('selected_program')
+        s = self.request.session
         for field_name, field in form.fields.items():
             try: 
                 related_model = self.model._meta.get_field(field_name).related_model
@@ -129,14 +112,20 @@ class BaseWriteView(PermissionRequiredMixin):
                 
                 # Check if the related model has faculty and program fields
                 if 'faculty' in related_model_fields:
-                    queryset = queryset.filter(faculty_id=faculty_id)
+                    queryset = queryset.filter(faculty_id=s['selected_faculty'])
                 if 'program' in related_model_fields:
-                    queryset = queryset.filter(program_id=program_id)
+                    queryset = queryset.filter(program_id=s['selected_program'])
                 field.queryset = queryset
             except:
                 continue
-        
+
         return form
+    
+    def form_valid(self, form):
+        s = self.request.session
+        form.instance.faculty = Faculty.objects.get(pk=s['selected_faculty'])
+        form.instance.program = Program.objects.get(pk=s['selected_program'])
+        return super().form_valid(form)
 
 class BaseCreateView(BaseWriteView, CreateView):
     """
@@ -157,7 +146,7 @@ class BaseCreateView(BaseWriteView, CreateView):
         if not hasattr(self, 'flat_fields'):
             return super().get_form_class()
             
-        # this intercept the default model form and make changes 
+        # this intercept the default model form and make inject the flat fields 
         class DynamicForm(forms.ModelForm):
             class Meta:
                 model = self.model
@@ -166,20 +155,19 @@ class BaseCreateView(BaseWriteView, CreateView):
                 
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
-                if hasattr(self.Meta, 'flat_fields'):
-                    for field_name, field_list in self.Meta.flat_fields:
-                        # Get the model of the flat field
-                        flat_field = self._meta.model._meta.get_field(field_name)
-                        related_model = flat_field.related_model
-                        # Add fields from the related model
-                        for field in field_list:
-                            self.fields[f'{field_name}__{field}'] = forms.CharField(
-                                label=f"{field_name.capitalize()} {field.replace('_', ' ')}",
-                                required=field in getattr(related_model._meta, 'required_fields', [])
-                            )
-                        # make the default field name optional
-                        if self.fields.get(field_name):
-                            self.fields[field_name].required = False
+                for field_name, field_list in self.Meta.flat_fields:
+                    # Get the model of the flat field
+                    flat_field = self._meta.model._meta.get_field(field_name)
+                    related_model = flat_field.related_model
+                    # Add fields from the related model
+                    for field in field_list:
+                        self.fields[f'{field_name}__{field}'] = forms.CharField(
+                            label=f"{field_name.capitalize()} {field.replace('_', ' ')}",
+                            required=field in getattr(related_model._meta, 'required_fields', [])
+                        )
+                    # make the default field name optional
+                    if self.fields.get(field_name):
+                        self.fields[field_name].required = False
         return DynamicForm
         
     def form_valid(self, form):

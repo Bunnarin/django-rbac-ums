@@ -33,12 +33,11 @@ class CustomUser(OrganizationsNullMixin, AbstractUser):
         if creation:
             self.set_unusable_password()
         
-        # if updating, we need to check if we really need to add to the name
+        # make sure username is unique (but can only have 2 user with the same name)
         new_username = self.first_name.lower() + self.last_name.lower()
         if self.username != new_username:
-            username_num = CustomUser.objects.filter(username__startswith=new_username).count()
-            if username_num > 0:
-                self.username = new_username + str(username_num)
+            if CustomUser.objects.filter(username=new_username).exists():
+                self.username = new_username + str(1)
             else:
                 self.username = new_username
                 
@@ -50,6 +49,7 @@ class CustomUser(OrganizationsNullMixin, AbstractUser):
         elif not creation:
             self.groups.remove(staff_group)
 
+        # ensures that we can have the same blank email
         if self.email == '':
             self.email = None
 
@@ -82,7 +82,6 @@ class Student(ProfileMixin):
     def save(self, *args, **kwargs):
         """
         automatically set the affiliation from the class's affiliation
-        and, add the affiliation to the user as well
         """
         if self._class:
             self.faculty = self._class.faculty

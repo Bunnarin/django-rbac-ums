@@ -8,8 +8,8 @@ class ActivityListView(BaseListView):
     View for listing all activities.
     """
     model = Activity
-    actions = ["add", "delete"]
-    table_fields = ['author', 'template', 'created_at', 'updated_at', 'faculty']
+    cruds = ['add', 'delete']
+    table_fields = ['author', 'template', 'created_at', 'response', 'faculty']
 
 class ActivityTemplateSelectView(ListView):
     """
@@ -29,12 +29,13 @@ class ActivityCreateView(BaseCreateView):
     """
     model = Activity
     def get_form(self):
-        template_json = ActivityTemplate.objects.get(pk=self.kwargs['template_pk']).template_definition
-        Form = get_json_form(template_json, Activity, ['faculty', 'response'], 'response')
+        self.template = ActivityTemplate.objects.get(pk=self.kwargs['template_pk'])
+        template_json = self.template.template_definition
+        Form = get_json_form(template_json, Activity, ['response'], 'response')
         return super().get_form(form_class=Form)
 
     def form_valid(self, form):
-        form.instance.template = ActivityTemplate.objects.get(pk=self.kwargs['template_pk'])
+        form.instance.template = self.template
         form.instance.author = self.request.user
         return super().form_valid(form)
 
@@ -43,7 +44,6 @@ class ActivityDeleteView(BaseDeleteView):
 
 class ActivityTemplateListView(BaseListView):
     model = ActivityTemplate
-    actions = ['add', 'change', 'delete']
     table_fields = ['name']
 
 class ActivityTemplateCreateView(BaseCreateView):

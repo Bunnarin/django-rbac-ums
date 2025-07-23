@@ -29,7 +29,7 @@ class ProfileMixin(ProgramNullMixin):
         super().save(*args, **kwargs)
     
     def delete(self, *args, **kwargs):
-        profile_group = Group.objects.get(name=f"ALL {self.__class__.__name__.upper()}")
+        profile_group, _ = Group.objects.get_or_create(name=f"ALL {self.__class__.__name__.upper()}")
         if self.user.pk:
             self.user.groups.remove(profile_group)
         super().delete(*args, **kwargs)
