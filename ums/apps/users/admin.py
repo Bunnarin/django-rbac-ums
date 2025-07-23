@@ -2,9 +2,15 @@ from django.contrib import admin
 from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
 from allauth.account.models import EmailAddress
+from .models import Student, Professor, CustomUser
 
 # Unregister default allauth email admin since we don't need it
 admin.site.unregister(EmailAddress)
+
+# when you need to bypass the default behaviour of the student and prof form
+admin.site.register(Student)
+admin.site.register(Professor)
+admin.site.register(CustomUser)
 
 admin.site.unregister(Group)
 @admin.register(Group)

@@ -65,19 +65,23 @@ class StudentListView(BaseListView):
 
 class StudentCreateView(BaseCreateView):
     model = Student
+    fields = ['_class']
     flat_fields = [('user', ['first_name', 'last_name', 'email', 'phone_number'])]
+
+class StudentUpdateView(BaseUpdateView):
+    model = Student
 
     def get_form(self, form_class=None):
         """
-        minimize the queryset to only user that has a student profile
-        (because either the student is new or existing, they'd be created alongside the student profile or already has the profile to begin with)
+        this is for the edge case of learning center where they might want to reselect 
+        the correct user after creating a duplicate due to the restriction in the createview
         """
         form = super().get_form(form_class)
-        form.fields['user'].queryset = CustomUser.objects.exclude(student__isnull=True)
+        user = self.get_object().user
+        form.fields['user'].queryset = CustomUser.objects.filter(
+            first_name=user.first_name, last_name=user.last_name
+            )
         return form
-
-class StudentUpdateView(StudentCreateView, BaseUpdateView):
-    pass
 
 class StudentDeleteView(BaseDeleteView):
     model = Student
@@ -92,14 +96,22 @@ class ProfessorCreateView(BaseCreateView):
 
     def get_form(self, form_class=None):
         """
-        minimize the queryset to only user that aren't students
+        limit the queryset to only user that aren't students
         """
         form = super().get_form(form_class)
         form.fields['user'].queryset = CustomUser.objects.exclude(student__isnull=False)
         return form
 
-class ProfessorUpdateView(ProfessorCreateView, BaseUpdateView):
-    pass
+class ProfessorUpdateView(BaseUpdateView):
+    model = Professor
+
+    def get_form(self, form_class=None):
+        """
+        limit the queryset to only user that aren't students
+        """
+        form = super().get_form(form_class)
+        form.fields['user'].queryset = CustomUser.objects.exclude(student__isnull=False)
+        return form
 
 class ProfessorDeleteView(BaseDeleteView):
     model = Professor

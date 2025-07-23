@@ -2,8 +2,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic import FormView
 from django.db import transaction
 from django.urls import reverse_lazy
-from django.shortcuts import redirect
-from django.contrib import messages
+from django.core.exceptions import ValidationError
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView
 from apps.core.forms import get_json_form
 from apps.users.models import Student
@@ -120,11 +119,10 @@ class EvaluationEditView(PermissionRequiredMixin, FormView):
     permission_required = 'academic.add_evaluation'
     success_url = reverse_lazy('academic:view_schedule')
 
-    # redirect back to success_url if evaluation already exists
+    # throw an error if they've already created the evaluation
     def dispatch(self, request, *args, **kwargs):
-        if Evaluation.objects.filter(schedule_id=kwargs['schedule_pk'], student__user=request.user).exists():
-            messages.error(request, "you've already evaluated this schedule")
-            return redirect(self.success_url)
+        if Evaluation.objects.filter(schedule=kwargs['schedule_pk'], student__user=request.user).exists():
+            raise ValidationError("You've already evaluated this schedule")
         return super().dispatch(request, *args, **kwargs)
 
     def get_form(self):
@@ -134,9 +132,10 @@ class EvaluationEditView(PermissionRequiredMixin, FormView):
     
     def form_valid(self, form):
         if form.is_valid():
+            schedule = Schedule.objects.select_related('_class').get(pk=self.kwargs['schedule_pk'])
             Evaluation.objects.create(
-                schedule=Schedule.objects.select_related('_class').get(pk=self.kwargs['schedule_pk']), 
-                student=Student.objects.get(user=self.request.user, _class=self.schedule._class), 
+                schedule=schedule, 
+                student=Student.objects.get(user=self.request.user, _class=schedule._class), 
                 response=form.cleaned_data['response']
                 )
         return super().form_valid(form)
