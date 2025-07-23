@@ -3,6 +3,7 @@ from django.db import models
 class RLSManager(models.Manager):
     """
     Custom manager that implements Row-Level Security (RLS) filtering.
+    requires the model to possess both faculty and program period.
     """
 
     def __init__(self, *args, **kwargs):
@@ -16,10 +17,6 @@ class RLSManager(models.Manager):
     
     def for_user(self, request):
         queryset = self.get_queryset()
-
-        if self.field_with_affiliation != "":
-            queryset = queryset.select_related(self.field_with_affiliation[:-2])
-
         user = request.user
         s = request.session
         faculty_id = s.get('selected_faculty')
@@ -28,17 +25,15 @@ class RLSManager(models.Manager):
         if user.has_perm('users.access_global') or \
             user.has_perm('users.access_faculty_wide') or \
             user.has_perm('users.access_program_wide'):
-
             filters = {}
-
             if faculty_id != "None":
                 filters[f"{self.field_with_affiliation}faculty"] = faculty_id
             else:
                 filters[f"{self.field_with_affiliation}faculty__isnull"] = True
 
-            if program_id != "None" and hasattr(self.model, 'program'):
+            if program_id != "None":
                 filters[f"{self.field_with_affiliation}program"] = program_id
-            elif hasattr(self.model, 'program'):
+            else:
                 filters[f"{self.field_with_affiliation}program__isnull"] = True
 
             return queryset.filter(**filters)

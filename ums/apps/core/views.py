@@ -251,9 +251,9 @@ def set_faculty(request):
 
         # now set the program automatically
         if authorized:
-            new_program = Program.objects.filter(faculty_id=faculty_id).first()
+            new_program = Program.objects.filter(faculty=faculty_id).first()
         else:
-            new_program = user.programs.filter(faculty_id=faculty_id).first()
+            new_program = user.programs.filter(faculty=faculty_id).first()
         s['selected_program'] = new_program.id
 
     return redirect(request.META.get('HTTP_REFERER', '/'))

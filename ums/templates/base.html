@@ -27,9 +27,13 @@
         $(document).ready(function() {
             {% with request.session as s %}
                 {% if not s.selected_faculty and all_faculties %}
+                // select the 2nd choice if exist
+                    $('#faculty-form').find('option:eq(1)').prop('selected', true);
                     $('#faculty-form').submit();
                 {% endif %}
                 {% if not s.selected_program and s.selected_faculty and all_programs %}
+                // select the 2nd choice if exist
+                    $('#program-form').find('option:eq(1)').prop('selected', true);
                     $('#program-form').submit();
                 {% endif %}
             {% endwith %}

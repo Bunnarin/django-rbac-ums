@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models import Q
 from django.conf import settings
 from django_jsonform.models.fields import JSONField
-from apps.organization.mixins import FacultyNullMixin
+from apps.organization.mixins import OrganizationNullMixin
 
 # Create your models here.
 class ActivityTemplate(models.Model):
@@ -43,7 +43,7 @@ class ActivityTemplate(models.Model):
     def __str__(self): 
         return self.name
 
-class Activity(FacultyNullMixin):
+class Activity(OrganizationNullMixin):
     """
     Stores user responses to activity templates with row-level security.
     """
