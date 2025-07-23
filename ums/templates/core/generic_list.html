@@ -15,17 +15,18 @@
         <table class="table table-striped table-hover table-bordered" id="data-table">
             <thead>
                 <tr>
+                {% if actions or change_url or delete_url or obj.get_absolute_url %}
                     <th>Actions</th>
+                {% endif %}
                 {% for field in table_fields %}
-                    <th>
-                        {{ field|title }}
-                    </th>
+                    <th>{{ field|title }}</th>
                 {% endfor %}
                 </tr>
             </thead>
             <tbody>
             {% for obj in object_list %}
                 <tr>
+                {% if actions or change_url or delete_url or obj.get_absolute_url %}
                     <td>
                     {% if change_url %}
                         <a href="{% url change_url obj.pk %}" class="btn btn-info">✏️</a>
@@ -40,7 +41,7 @@
                         <a href="{% url url obj.pk %}" class="btn btn-secondary">{{ action }}</a>
                     {% endfor %}
                     </td>
-                
+                {% endif %}
                 {% for field in table_fields %}
                     <td>
                     {% with field_value=obj|get_attr_from_object:field %}

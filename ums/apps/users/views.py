@@ -1,5 +1,6 @@
 from django.contrib.auth.models import Permission
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView
+from apps.organization.models import Faculty
 from .models import Student, Professor, CustomUser
 
 class UserListView(BaseListView):
@@ -10,6 +11,22 @@ class UserCreateView(BaseCreateView):
     model = CustomUser
     fields = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs', 'groups', 'user_permissions']
     
+    def form_valid(self, form):
+        """
+        validate user's faculties and programs
+        """
+        if form.is_valid():
+            cleaned_data = form.cleaned_data
+            faculties = cleaned_data.get('faculties')
+            programs = cleaned_data.get('programs')
+            if faculties and programs:
+                program_faculties = Faculty.objects.filter(programs__in=programs).distinct()
+                missing_faculties = program_faculties.exclude(id__in=[f.id for f in faculties])
+                if missing_faculties.exists():
+                    form.add_error('programs', f"The selected programs include faculties that are not in the assigned faculties: {', '.join(str(f) for f in missing_faculties)}")
+                    return self.form_invalid(form)
+        return super().form_valid(form)
+
     def get_form(self, form_class=None):
         """
         Filter the user permissions based on user's own permission set.
@@ -27,24 +44,24 @@ class UserCreateView(BaseCreateView):
             return form
         elif user.has_perm('users.access_faculty_wide'):
             form.fields['faculties'].queryset = user.faculties.all()
-            form.fields['programs'].queryset = Program.objects.filter(faculty__in=user.faculties.all())
+            form.fields['programs'].queryset = Program.objects.filter(
+                faculty__in=user.faculties.all()
+                )
         else:
             form.fields['faculties'].queryset = user.faculties.all()
             form.fields['programs'].queryset = user.programs.all()
-        
         return form
-    
 
-class UserUpdateView(BaseUpdateView):
-    model = CustomUser
-    fields = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs', 'groups', 'user_permissions']
+class UserUpdateView(UserCreateView, BaseUpdateView):
+    pass
 
 class UserDeleteView(BaseDeleteView):
     model = CustomUser
 
 class StudentListView(BaseListView):
     model = Student
-    table_fields = ['user', '_class', 'faculty', 'program']
+    table_fields = ['user', '_class']
+    actions = [('score', 'academic:view_score')]
 
 class StudentCreateView(BaseCreateView):
     model = Student
@@ -56,7 +73,7 @@ class StudentCreateView(BaseCreateView):
         (because either the student is new or existing, they'd be created alongside the student profile or already has the profile to begin with)
         """
         form = super().get_form(form_class)
-        form.fields['user'].queryset = CustomUser.objects.exclude(student_set__isnull=True)
+        form.fields['user'].queryset = CustomUser.objects.exclude(student__isnull=True)
         return form
 
 class StudentUpdateView(StudentCreateView, BaseUpdateView):
@@ -67,7 +84,7 @@ class StudentDeleteView(BaseDeleteView):
 
 class ProfessorListView(BaseListView):
     model = Professor
-    table_fields = ['user', 'faculty', 'program']
+    table_fields = ['user']
 
 class ProfessorCreateView(BaseCreateView):
     model = Professor
@@ -78,7 +95,7 @@ class ProfessorCreateView(BaseCreateView):
         minimize the queryset to only user that aren't students
         """
         form = super().get_form(form_class)
-        form.fields['user'].queryset = CustomUser.objects.exclude(student_set__isnull=False)
+        form.fields['user'].queryset = CustomUser.objects.exclude(student__isnull=False)
         return form
 
 class ProfessorUpdateView(ProfessorCreateView, BaseUpdateView):

@@ -20,5 +20,9 @@ urlpatterns = [
     path('schedules/change/<int:pk>/', views.ScheduleUpdateView.as_view(), name='change_schedule'),
     path('schedules/delete/<int:pk>/', views.ScheduleDeleteView.as_view(), name='delete_schedule'),
     # score
-    path('scores/add/<int:schedule_pk>/', views.ScoreBulkEditView.as_view(), name='add_score'),
+    path('scores/<int:student_pk>/', views.ScoreStudentListView.as_view(), name='view_score'),
+    path('scores/add/<int:schedule_pk>/', views.ScoreScheduleEditView.as_view(), name='add_score'),
+    # evaluation
+    path('evaluations/', views.EvaluationListView.as_view(), name='view_evaluation'),
+    path('evaluations/add/<int:schedule_pk>/', views.EvaluationEditView.as_view(), name='add_evaluation'),
 ]

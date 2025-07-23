@@ -3,15 +3,17 @@ from django.db.models import Q
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractUser, Group
 from phonenumber_field.modelfields import PhoneNumberField
-from apps.organization.mixins import OrganizationsNullMixin
+from apps.organization.models import Faculty, Program
 from .mixins import ProfileMixin
 from .managers import UserRLSManager
 
-class CustomUser(OrganizationsNullMixin, AbstractUser):
+class CustomUser(AbstractUser):
     first_name = models.CharField("first name", max_length=30)
     last_name = models.CharField("last name", max_length=30)
     email = models.EmailField("email address", unique=True, blank=True, null=True)
     phone_number = PhoneNumberField(max_length=16, unique=True, blank=True, null=True)
+    faculties = models.ManyToManyField(Faculty, blank = True)
+    programs = models.ManyToManyField(Program, blank = True)
 
     objects = UserRLSManager()
 

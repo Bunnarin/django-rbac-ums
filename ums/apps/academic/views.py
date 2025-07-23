@@ -2,14 +2,17 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic import FormView
 from django.db import transaction
 from django.urls import reverse_lazy
+from django.shortcuts import redirect
+from django.contrib import messages
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView
-from .models import Course, Class, Schedule, Score
+from apps.core.forms import get_json_form
+from apps.users.models import Student
+from .models import Course, Class, Schedule, Score, Evaluation, EvalationTemplate
 from .forms import create_score_form_class
-
 
 class CourseListView(BaseListView):
     model = Course
-    table_fields = ['name', 'faculty', 'program']
+    table_fields = ['name']
 
 class CourseCreateView(BaseCreateView):
     model = Course
@@ -22,7 +25,8 @@ class CourseDeleteView(BaseDeleteView):
 
 class ScheduleListView(BaseListView):
     model = Schedule
-    actions = [('score', 'academic:add_score')]
+    actions = [('score', 'academic:add_score'),
+               ('evaluation', 'academic:add_evaluation')]
     table_fields = ['professor', 'course', '_class']
 
 class ScheduleCreateView(BaseCreateView):
@@ -39,11 +43,10 @@ class ScheduleDeleteView(BaseDeleteView):
 
 class ClassListView(BaseListView):
     model = Class
-    table_fields = ['name', 'faculty', 'program']
+    table_fields = ['name']
 
 class ClassCreateView(BaseCreateView):
     model = Class
-    fields = ['faculty', 'program', 'name']
 
 class ClassUpdateView(BaseUpdateView):
     model = Class
@@ -51,7 +54,15 @@ class ClassUpdateView(BaseUpdateView):
 class ClassDeleteView(BaseDeleteView):
     model = Class
 
-class ScoreBulkEditView(PermissionRequiredMixin, FormView):
+class ScoreStudentListView(BaseListView):
+    model = Score
+    cruds = []
+    table_fields = ['course', 'score']
+
+    def get_queryset(self):
+        return Score.objects.filter(student_id=self.kwargs['student_pk']).select_related('course')
+
+class ScoreScheduleEditView(PermissionRequiredMixin, FormView):
     """
     View for bulk creating/updating scores for all students in a class.
     """
@@ -93,5 +104,39 @@ class ScoreBulkEditView(PermissionRequiredMixin, FormView):
                     score_objects,
                     ['score'],  # Fields to update
                     match_field='student'  # Field to match on for updates
+                )
+        return super().form_valid(form)
+
+class EvaluationListView(BaseListView):
+    model = Evaluation
+    cruds = []
+    table_fields = ['schedule', 'response']
+
+class EvaluationEditView(PermissionRequiredMixin, FormView):
+    """
+    View for creating/updating an evaluation for a schedule.
+    """
+    template_name = 'core/generic_form.html'
+    permission_required = 'academic.add_evaluation'
+    success_url = reverse_lazy('academic:view_schedule')
+
+    # redirect back to success_url if evaluation already exists
+    def dispatch(self, request, *args, **kwargs):
+        if Evaluation.objects.filter(schedule_id=kwargs['schedule_pk'], student__user=request.user).exists():
+            messages.error(request, "you've already evaluated this schedule")
+            return redirect(self.success_url)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form(self):
+        question_definition = EvalationTemplate.objects.get().question_definition
+        Form = get_json_form(question_definition, Evaluation, ['response'], 'response')
+        return super().get_form(form_class=Form)
+    
+    def form_valid(self, form):
+        if form.is_valid():
+            Evaluation.objects.create(
+                schedule=Schedule.objects.select_related('_class').get(pk=self.kwargs['schedule_pk']), 
+                student=Student.objects.get(user=self.request.user, _class=self.schedule._class), 
+                response=form.cleaned_data['response']
                 )
         return super().form_valid(form)

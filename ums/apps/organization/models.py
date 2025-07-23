@@ -11,6 +11,6 @@ class Faculty(models.Model):
 
 class Program(models.Model):
     name = models.CharField(max_length=255)
-    faculty = models.ForeignKey(Faculty, on_delete=models.PROTECT,)
+    faculty = models.ForeignKey(Faculty, on_delete=models.PROTECT, related_name='programs')
     def __str__(self):
         return self.name

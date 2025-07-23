@@ -1,5 +1,5 @@
 from django.db import models
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ImproperlyConfigured
 from apps.core.managers import RLSManager
 from .models import Faculty, Program
 
@@ -11,10 +11,22 @@ class OrganizationMixin(models.Model):
     program = models.ForeignKey(Program, on_delete=models.PROTECT)
     objects = RLSManager()
 
+    def get_user_rls_filter(self, user):
+        """
+        Raise error to enforce any subclasses to define this method
+        """
+        raise ImproperlyConfigured("Subclasses must implement get_user_rls_filter method")
+
     def clean(self):
         super().clean()
+        """
+        this is to ensure that get_user_rls_filter is implemented
+        """
+        self.get_user_rls_filter(None)
         if self.program and self.faculty and self.faculty != self.program.faculty:
-            raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
+            raise ValidationError({
+                'program': 'The selected program does not belong to the assigned faculty.'
+                })
 
     def save(self, *args, **kwargs):
         """
@@ -37,6 +49,19 @@ class FacultyNullMixin(models.Model):
 
     class Meta:
         abstract = True
+    
+    def get_user_rls_filter(self, user):
+        """
+        Raise error to enforce any subclasses to define this method
+        """
+        raise ImproperlyConfigured("Subclasses must implement get_user_rls_filter method")
+    
+    def clean(self):
+        super().clean()
+        """
+        this is to ensure that get_user_rls_filter is implemented
+        """
+        self.get_user_rls_filter(None)
 
 class ProgramNullMixin(models.Model):
     """
@@ -51,33 +76,22 @@ class ProgramNullMixin(models.Model):
 
     def clean(self):
         super().clean()
+        self.get_user_rls_filter(None)
         if self.program and self.faculty and self.faculty != self.program.faculty:
             raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
 
-class OrganizationsNullMixin(models.Model):
-    """
-    Abstract base class for models with optional multiple faculty and program affiliations.
-    """
-    faculties = models.ManyToManyField(Faculty, blank = True)
-    programs = models.ManyToManyField(Program, blank = True)
-    objects = RLSManager()
-
-    class Meta:
-        abstract = True
+    def save(self, *args, **kwargs):
+        """
+        Validate that the selected program belongs to the selected faculty.
+        we do it in save and not clean because the form needs to inject affiliation after the clean
+        """
+        if self.program and self.faculty != self.program.faculty:
+            raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
+        super().save(*args, **kwargs)
     
-    def clean(self):
-        super().clean()
-        if not self.pk:
-            # because we can't access manytomany field during creation. this logic have to be in the form
-            return
-        faculties = self.faculties.all()
-        programs = self.programs.all()
-        if faculties and programs:
-            program_faculties = Faculty.objects.filter(
-                program__in=programs
-            ).distinct()
-            missing_faculties = program_faculties.exclude(id__in=[f.id for f in faculties])
-            if missing_faculties.exists():
-                raise ValidationError({
-                    'programs': f"The selected programs include faculties that are not in the assigned faculties: {', '.join(str(f) for f in missing_faculties)}"
-                })
+    def get_user_rls_filter(self, user):
+        """
+        Raise error to enforce any subclasses to define this method
+        """
+        raise ImproperlyConfigured("Subclasses must implement get_user_rls_filter method")
+        

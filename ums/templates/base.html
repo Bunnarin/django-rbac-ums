@@ -77,14 +77,13 @@
                                 </option>
                             {% endif %}
                         {% endfor %}
-                            
                         </select>
                     </form>
                     {% endwith %}
                 </div>
     
                 <!-- Admin link if staff -->
-                {% if request.user.is_staff %}
+                {% if user.is_staff %}
                     <a class="nav-link text-white" href="/admin/">Admin</a>
                 {% endif %}
     
@@ -100,6 +99,15 @@
             </div>
         </div>
     </nav>
+    <!-- display the latest message in red -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
     <!-- content -->
     <div class="container mt-4">
     {% block content %}

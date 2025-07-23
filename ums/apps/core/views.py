@@ -175,9 +175,10 @@ class BaseCreateView(BaseWriteView, CreateView):
                             label=f"{field_name.capitalize()} {field.replace('_', ' ')}",
                             required=field in getattr(related_model._meta, 'required_fields', [])
                         )
-                    # make the default field name optional
+                    # make the default field name optional and add help text
                     if self.fields.get(field_name):
                         self.fields[field_name].required = False
+                        self.fields[field_name].help_text = f"select this field if you do not wish to create another {field_name}"
         return DynamicForm
         
     def form_valid(self, form):
@@ -233,32 +234,27 @@ class BaseDeleteView(BaseWriteView, DeleteView):
 def set_faculty(request):
     """
     Set the selected faculty for the user.
-    """
-    if not request.user.is_authenticated:
-        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
-    
+    """    
     faculty_id = request.POST.get('faculty_id')
+    s = request.session
     if faculty_id == "":
-        request.session['selected_faculty'] = "None"
-        request.session['selected_program'] = "None"
-        return redirect(request.META.get('HTTP_REFERER', '/'))
-    try:
-        faculty_id = int(faculty_id)
-    except:
-        # don't set anything if invalid
-        return redirect(request.META.get('HTTP_REFERER', '/'))
-    user = request.user
-    authorized = user.has_perm('users.access_global')
-    if not authorized and faculty_id not in user.faculties.values_list('id', flat=True):
-        return JsonResponse({'success': False, 'error': 'Unauthorized faculty'}, status=403)
-    request.session['selected_faculty'] = faculty_id
-    # now set the program as well
-    if authorized:
-        new_program = Program.objects.filter(faculty_id=faculty_id).first()
+        s['selected_faculty'] = "None"
+        s['selected_program'] = "None"
     else:
-        new_program = user.programs.filter(faculty_id=faculty_id).first()
-    if new_program:
-        request.session['selected_program'] = new_program.id
+        faculty_id = int(faculty_id)
+        user = request.user
+        authorized = user.has_perm('users.access_global')
+        if not authorized and \
+            faculty_id not in user.faculties.values_list('id', flat=True):
+            return JsonResponse({'success': False, 'error': 'Unauthorized faculty'}, status=403)
+        s['selected_faculty'] = faculty_id
+
+        # now set the program automatically
+        if authorized:
+            new_program = Program.objects.filter(faculty_id=faculty_id).first()
+        else:
+            new_program = user.programs.filter(faculty_id=faculty_id).first()
+        s['selected_program'] = new_program.id
 
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
@@ -267,22 +263,15 @@ def set_program(request):
     """
     Set the selected program for the user.
     """
-    if not request.user.is_authenticated:
-        return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
-    
     program_id = request.POST.get('program_id')
+    s = request.session
     if program_id == "":
-        request.session['selected_program'] = "None"
-        return redirect(request.META.get('HTTP_REFERER', '/'))
-    try:
+        s['selected_program'] = "None"
+    else:
         program_id = int(program_id)
-    except:
-        # don't set anything if invalid
-        return redirect(request.META.get('HTTP_REFERER', '/'))
-    # Check if the program is in user's programs
-    user = request.user
-    authorized = user.has_perm('users.access_global') or user.has_perm('users.access_faculty_wide')
-    if not authorized and program_id not in request.user.programs.values_list('id', flat=True):
-        return JsonResponse({'success': False, 'error': 'Unauthorized program'}, status=403)
-    request.session['selected_program'] = program_id
+        user = request.user
+        authorized = user.has_perm('users.access_global') or user.has_perm('users.access_faculty_wide')
+        if not authorized and program_id not in user.programs.values_list('id', flat=True):
+            return JsonResponse({'success': False, 'error': 'Unauthorized program'}, status=403)
+        s['selected_program'] = program_id
     return redirect(request.META.get('HTTP_REFERER', '/'))
