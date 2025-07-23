@@ -1,10 +1,10 @@
 from django.contrib import admin
 from django.contrib.auth.models import Group, Permission
-from django.contrib.auth.admin import UserAdmin
 from django.db.models import Q
 from allauth.account.models import EmailAddress
-from .models import CustomUser, Professor, Student
-from .forms import CustomUserAdminForm
+
+# Unregister default allauth email admin since we don't need it
+admin.site.unregister(EmailAddress)
 
 # Unregister default Group admin to replace with custom version
 admin.site.unregister(Group)
@@ -13,7 +13,7 @@ admin.site.unregister(Group)
 class CustomGroupAdmin(admin.ModelAdmin):
     """  
     This admin class extends the default Group admin to provide:
-    - Permission filtering based on user's own permissions
+    - Permission filtering based on user's own permissions to ensure SECURITY
     - Extended permissions for users with faculty-wide or global access
     """
     search_fields = ("name",)
@@ -45,37 +45,3 @@ class CustomGroupAdmin(admin.ModelAdmin):
                 kwargs["queryset"] = Permission.objects.all().select_related("content_type")
 
         return super().formfield_for_manytomany(db_field, request=request, **kwargs)
-
-# Unregister default allauth email admin since we don't need it
-admin.site.unregister(EmailAddress)
-
-@admin.register(CustomUser)
-class CustomUserAdmin(UserAdmin):
-    """
-    Improved the defualt user admin to be cleaner and validate the affiliation during creation 
-    because we can't do that for manytomany field in model save() method
-    """
-    add_form = CustomUserAdminForm
-
-    list_display = ('username', 'is_staff',)
-    list_filter = ('is_staff', 'faculties','programs','groups','is_active')
-    search_fields = ('email','username','first_name','last_name','phone_number')
-
-    add_fieldsets = (
-        ('Authentication', {'fields': ('email','phone_number')}),
-        ('Personal Information', {'fields': ('first_name','last_name')}),
-        ('Affiliations', {'fields': ('faculties','programs')}),
-        ('Permissions', {'fields': ('is_active','is_staff','groups')}),
-    )
-
-    fieldsets = add_fieldsets
-
-@admin.register(Professor)
-class ProfessorAdmin(admin.ModelAdmin):
-    list_display = ('user', 'faculty', 'program')
-    list_filter = ('faculty', 'program')
-
-@admin.register(Student)
-class StudentAdmin(admin.ModelAdmin):
-    list_display = ('user', 'faculty', 'program')
-    list_filter = ('faculty', 'program')

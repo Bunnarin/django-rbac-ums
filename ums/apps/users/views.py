@@ -8,7 +8,7 @@ class UserListView(BaseListView):
 
 class UserCreateView(BaseCreateView):
     model = CustomUser
-    fields = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs', 'user_permissions']
+    fields = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs', 'groups', 'user_permissions']
     
     def get_form(self, form_class=None):
         """
@@ -19,10 +19,8 @@ class UserCreateView(BaseCreateView):
 
         user = self.request.user
         # filter permissions
-        user_perms_direct = user.user_permissions.all()
-        user_perms_via_groups = Permission.objects.filter(group__in=user.groups.all())
-        user_perms = (user_perms_direct | user_perms_via_groups).distinct()
-        form.fields['user_permissions'].queryset = user_perms
+        form.fields['groups'].queryset = user.groups
+        form.fields['user_permissions'].queryset = Permission.objects.filter(group__in=user.groups.all())
         
         # filter affiliations
         if user.has_perm('users.access_global'):
@@ -39,7 +37,7 @@ class UserCreateView(BaseCreateView):
 
 class UserUpdateView(BaseUpdateView):
     model = CustomUser
-    fields = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs']
+    fields = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs', 'groups', 'user_permissions']
 
 class UserDeleteView(BaseDeleteView):
     model = CustomUser
@@ -50,10 +48,19 @@ class StudentListView(BaseListView):
 
 class StudentCreateView(BaseCreateView):
     model = Student
-    flat_fields = [('user', ['first_name', 'last_name', 'phone_number'])]
+    flat_fields = [('user', ['first_name', 'last_name', 'email', 'phone_number'])]
 
-class StudentUpdateView(BaseUpdateView):
-    model = Student
+    def get_form(self, form_class=None):
+        """
+        minimize the queryset to only user that has a student profile
+        (because either the student is new or existing, they'd be created alongside the student profile or already has the profile to begin with)
+        """
+        form = super().get_form(form_class)
+        form.fields['user'].queryset = CustomUser.objects.exclude(student_set__isnull=True)
+        return form
+
+class StudentUpdateView(StudentCreateView, BaseUpdateView):
+    pass
 
 class StudentDeleteView(BaseDeleteView):
     model = Student
@@ -66,8 +73,16 @@ class ProfessorCreateView(BaseCreateView):
     model = Professor
     flat_fields = [('user', ['first_name', 'last_name', 'email'])]
 
-class ProfessorUpdateView(BaseUpdateView):
-    model = Professor
+    def get_form(self, form_class=None):
+        """
+        minimize the queryset to only user that aren't students
+        """
+        form = super().get_form(form_class)
+        form.fields['user'].queryset = CustomUser.objects.exclude(student_set__isnull=False)
+        return form
+
+class ProfessorUpdateView(ProfessorCreateView, BaseUpdateView):
+    pass
 
 class ProfessorDeleteView(BaseDeleteView):
     model = Professor

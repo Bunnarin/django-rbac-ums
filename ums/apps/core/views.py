@@ -122,9 +122,10 @@ class BaseWriteView(PermissionRequiredMixin):
         return form
     
     def form_valid(self, form):
-        s = self.request.session
-        form.instance.faculty = Faculty.objects.get(pk=s['selected_faculty'])
-        form.instance.program = Program.objects.get(pk=s['selected_program'])
+        if hasattr(form, "instance"):
+            s = self.request.session
+            form.instance.faculty = Faculty.objects.get(pk=s['selected_faculty'])
+            form.instance.program = Program.objects.get(pk=s['selected_program'])
         return super().form_valid(form)
 
 class BaseCreateView(BaseWriteView, CreateView):
@@ -172,30 +173,30 @@ class BaseCreateView(BaseWriteView, CreateView):
         
     def form_valid(self, form):
         # Handle related objects before the main save
-        if hasattr(form.Meta, 'flat_fields'):
-            for field_name, field_list in form.Meta.flat_fields:
-                # if user select the flat field, then we don't parse the expanded fields
-                if form.cleaned_data.get(field_name):
-                    continue
-                # Get the model for the flat field
-                flat_field = self.model._meta.get_field(field_name)
-                related_model = flat_field.related_model
-                # Get data for related model
-                related_data = {}
-                for field in field_list:
-                    form_field = f'{field_name}__{field}'
-                    if form_field in form.cleaned_data:
-                        value = form.cleaned_data.pop(form_field)
-                        if value == '':
-                            value = None
-                        related_data[field] = value
-                
-                # Create related object if we have data
-                if related_data:
-                    related_obj = related_model.objects.create(**related_data)
-                    setattr(form.instance, field_name, related_obj)
+        if not hasattr(form.Meta, 'flat_fields'):
+            return super().form_valid(form)
+        for field_name, field_list in form.Meta.flat_fields:
+            # if user select the flat field, then we don't parse the expanded fields
+            if form.cleaned_data.get(field_name):
+                continue
+            # Get the model for the flat field
+            flat_field = self.model._meta.get_field(field_name)
+            related_model = flat_field.related_model
+            # Get data for related model
+            related_data = {}
+            for field in field_list:
+                form_field = f'{field_name}__{field}'
+                if form_field in form.cleaned_data:
+                    value = form.cleaned_data.pop(form_field)
+                    if value == '':
+                        value = None
+                    related_data[field] = value
+            
+            # Create related object if we have data
+            if related_data:
+                related_obj = related_model.objects.create(**related_data)
+                setattr(form.instance, field_name, related_obj)
         
-        # Now call the parent's form_valid which will call form.save()
         return super().form_valid(form)
 
 class BaseUpdateView(BaseWriteView, UpdateView):
