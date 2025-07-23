@@ -6,13 +6,12 @@
 {% endblock title %}
 
 {% block extra_head %}
-    {{ block.super }}
 {% endblock extra_head %}
 
 {% block extra_js %}
-    {{ block.super }}
-    {% block extra_body %}{% endblock extra_body %} {# Map allauth's extra_body here if you need it #}
 {% endblock extra_js %}
 
 {% block content %}
+{% block extra_body %}{% endblock extra_body %}
+
 {% endblock content %}

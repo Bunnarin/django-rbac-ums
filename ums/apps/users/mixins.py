@@ -3,7 +3,6 @@ from django.db.models import Q
 from django.contrib.auth.models import Group
 from django.conf import settings
 from apps.organization.mixins import ProgramNullMixin
-from apps.core.managers import RLSManager
 
 class ProfileMixin(ProgramNullMixin):
     """
@@ -11,9 +10,7 @@ class ProfileMixin(ProgramNullMixin):
     it requires a faculty and an optional program.
     it also ensure that each profile gets added to the ALL {profile} group
     """
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-
-    objects = RLSManager()
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
 
     class Meta:
         abstract = True

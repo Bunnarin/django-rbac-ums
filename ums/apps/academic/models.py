@@ -3,13 +3,12 @@ from django.db.models import Q
 from bulk_update_or_create import BulkUpdateOrCreateQuerySet
 from apps.organization.mixins import OrganizationMixin
 from apps.users.models import Professor, Student
-from apps.core.managers import RLSManager
 from apps.core.mixins import DetailMixin
 
 class Course(DetailMixin, OrganizationMixin):
     name = models.CharField(max_length=255)
 
-    objects = RLSManager()
+    
 
     def __str__(self):
         return self.name
@@ -20,7 +19,7 @@ class Course(DetailMixin, OrganizationMixin):
 class Class(DetailMixin, OrganizationMixin):
     name = models.CharField(max_length=255)
 
-    objects = RLSManager()
+    
 
     class Meta:
         verbose_name_plural = "Classes"
@@ -43,9 +42,9 @@ class Schedule(DetailMixin, models.Model):
     """
     Stores the schedule for a professor for a course for a class
     """
-    professor = models.ForeignKey(Professor, on_delete=models.CASCADE)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    _class = models.ForeignKey(Class, on_delete=models.CASCADE)
+    professor = models.ForeignKey(Professor, on_delete=models.PROTECT)
+    course = models.ForeignKey(Course, on_delete=models.PROTECT)
+    _class = models.ForeignKey(Class, on_delete=models.PROTECT)
     monday = models.CharField(max_length=13, null=True, blank=True)
     tuesday = models.CharField(max_length=13, null=True, blank=True)
     wednesday = models.CharField(max_length=13, null=True, blank=True)
@@ -64,8 +63,8 @@ class Schedule(DetailMixin, models.Model):
         unique_together = ('professor', 'course', '_class')
 
 class Score(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.PROTECT)
+    course = models.ForeignKey(Course, on_delete=models.PROTECT)
     score = models.IntegerField()
 
     objects = BulkUpdateOrCreateQuerySet.as_manager()

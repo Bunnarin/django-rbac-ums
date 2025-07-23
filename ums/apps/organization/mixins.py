@@ -1,13 +1,20 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from apps.core.managers import RLSManager
 from .models import Faculty, Program
 
 class OrganizationMixin(models.Model):
     """
-    Abstract base class for models that require both faculty and program relationships.
+    Abstract base class for models with both faculty and program affiliations.
     """
-    faculty = models.ForeignKey(Faculty, on_delete=models.PROTECT,)
-    program = models.ForeignKey(Program, on_delete=models.PROTECT,)
+    faculty = models.ForeignKey(Faculty, on_delete=models.PROTECT)
+    program = models.ForeignKey(Program, on_delete=models.PROTECT)
+    objects = RLSManager()
+
+    def clean(self):
+        super().clean()
+        if self.program and self.faculty and self.faculty != self.program.faculty:
+            raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
 
     def save(self, *args, **kwargs):
         """
@@ -21,86 +28,39 @@ class OrganizationMixin(models.Model):
     class Meta:
         abstract = True
 
-class OrganizationNullMixin(models.Model):
-    """
-    Abstract base class for models that require optional faculty and program relationships.
-    """
-    faculty = models.ForeignKey(
-        Faculty,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-    )
-    program = models.ForeignKey(
-        Program,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-    )
-
-    def clean(self):
-        """
-        Validate that the selected program belongs to the selected faculty.
-        """
-        super().clean()
-        if self.program and self.faculty:
-            if self.faculty != self.program.faculty:
-                raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
-    
-    class Meta:
-        abstract = True
-
-class FacultyMixin(models.Model):
-    """
-    Abstract base class for models that require a faculty relationship.
-    """
-    faculty = models.ForeignKey(Faculty, on_delete=models.PROTECT)
-
-    class Meta:
-        abstract = True
-
 class FacultyNullMixin(models.Model):
     """
-    Abstract base class for models that needs optional faculty relationship.
+    Abstract base class for models with an optional faculty affiliation.
     """
-    faculty = models.ForeignKey(
-        Faculty,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-    )
+    faculty = models.ForeignKey(Faculty, null=True, blank=True, on_delete=models.SET_NULL)
+    objects = RLSManager()
 
     class Meta:
         abstract = True
 
-class ProgramNullMixin(FacultyMixin):
+class ProgramNullMixin(models.Model):
     """
-    Abstract base class for models that needs optional program relationship.
+    Abstract base class for models with an optional program affiliation.
     """
+    faculty = models.ForeignKey(Faculty, on_delete=models.PROTECT)
     program = models.ForeignKey(Program, null=True, blank=True, on_delete=models.SET_NULL)
+    objects = RLSManager()
 
     class Meta:
         abstract = True
 
     def clean(self):
         super().clean()
-        if self.program and self.faculty != self.program.faculty:
+        if self.program and self.faculty and self.faculty != self.program.faculty:
             raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
 
-class FacultiesNullMixin(models.Model):
+class OrganizationsNullMixin(models.Model):
     """
-    Abstract base class for models that needs optional multiple faculty relationships.
+    Abstract base class for models with optional multiple faculty and program affiliations.
     """
-    faculties = models.ManyToManyField(Faculty, blank = True,)
-
-    class Meta:
-        abstract = True
-
-class OrganizationsNullMixin(FacultiesNullMixin):
-    """
-    Abstract base class for models that needs optional multiple faculty and program relationships.
-    """
+    faculties = models.ManyToManyField(Faculty, blank = True)
     programs = models.ManyToManyField(Program, blank = True)
+    objects = RLSManager()
 
     class Meta:
         abstract = True

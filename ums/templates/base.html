@@ -22,21 +22,17 @@
     <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
     
     {% block extra_head %}{% endblock %}
-    
+    <!-- script for auto submitting the affiliations -->
     <script>
-        // Auto-submit faculty/program selection forms
-        document.addEventListener('DOMContentLoaded', function() {
-            const facultyForm = document.getElementById('faculty-form');
-            const programForm = document.getElementById('program-form');
-            // Check if we need to auto-submit faculty form
-            {% if not request.session.selected_faculty and user.is_authenticated and all_faculties %}
-                facultyForm.submit();
-            {% endif %}
-            
-            // Check if we need to auto-submit program form
-            {% if not request.session.selected_program and request.session.selected_faculty and user.is_authenticated and all_programs %}
-                programForm.submit();
-            {% endif %}
+        $(document).ready(function() {
+            {% with request.session as s %}
+                {% if not s.selected_faculty and all_faculties %}
+                    $('#faculty-form').submit();
+                {% endif %}
+                {% if not s.selected_program and s.selected_faculty and all_programs %}
+                    $('#program-form').submit();
+                {% endif %}
+            {% endwith %}
         });
     </script>
 
@@ -55,31 +51,36 @@
             <div class="d-flex align-items-center gap-3">
                 <!-- Faculty and Program selects -->
                 <div class="d-flex gap-2">
+                    {% with request.session as s %}
                     <form method="POST" action="{% url 'core:set_faculty' %}" id="faculty-form">
                         {% csrf_token %}
                         <select name="faculty_id" class="form-select" onchange="this.form.submit()">
-                            {% for faculty in all_faculties %}
-                                <option value="{{ faculty.id }}" 
-                                    {% if faculty.id == request.session.selected_faculty %}selected{% endif %}>
-                                    {{ faculty.name }}
-                                </option>
-                            {% endfor %}
+                            <option value="" selected>None</option>
+                        {% for faculty in all_faculties %}
+                            <option value="{{ faculty.id }}" 
+                                {% if faculty.id == s.selected_faculty %}selected{% endif %}>
+                                {{ faculty.name }}
+                            </option>
+                        {% endfor %}
                         </select>
                     </form>
     
                     <form method="POST" action="{% url 'core:set_program' %}" id="program-form">
                         {% csrf_token %}
                         <select name="program_id" class="form-select" onchange="this.form.submit()">
-                            {% for program in all_programs %}
-                                {% if program.faculty.id == request.session.selected_faculty %}
-                                    <option value="{{ program.id }}" 
-                                        {% if program.id == request.session.selected_program %}selected{% endif %}>
-                                        {{ program.name }}
-                                    </option>
-                                {% endif %}
-                            {% endfor %}
+                                <option value="" selected>None</option>
+                        {% for program in all_programs %}
+                            {% if program.faculty.id == s.selected_faculty %}
+                                <option value="{{ program.id }}" 
+                                    {% if program.id == s.selected_program %}selected{% endif %}>
+                                    {{ program.name }}
+                                </option>
+                            {% endif %}
+                        {% endfor %}
+                            
                         </select>
                     </form>
+                    {% endwith %}
                 </div>
     
                 <!-- Admin link if staff -->

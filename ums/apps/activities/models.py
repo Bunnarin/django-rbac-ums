@@ -2,7 +2,6 @@ from django.db import models
 from django.db.models import Q
 from django.conf import settings
 from django_jsonform.models.fields import JSONField
-from apps.core.managers import RLSManager
 from apps.organization.mixins import FacultyNullMixin
 
 # Create your models here.
@@ -52,8 +51,6 @@ class Activity(FacultyNullMixin):
     response = models.JSONField()
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    objects = RLSManager()
 
     def get_user_rls_filter(self, user):
         return Q(author=user)

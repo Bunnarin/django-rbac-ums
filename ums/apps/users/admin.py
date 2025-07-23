@@ -6,9 +6,7 @@ from allauth.account.models import EmailAddress
 # Unregister default allauth email admin since we don't need it
 admin.site.unregister(EmailAddress)
 
-# Unregister default Group admin to replace with custom version
 admin.site.unregister(Group)
-
 @admin.register(Group)
 class CustomGroupAdmin(admin.ModelAdmin):
     """  

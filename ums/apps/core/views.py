@@ -122,10 +122,19 @@ class BaseWriteView(PermissionRequiredMixin):
         return form
     
     def form_valid(self, form):
-        if hasattr(form, "instance"):
-            s = self.request.session
+        if not hasattr(form, "instance"):
+            return super().form_valid(form)
+
+        s = self.request.session
+        # set the faculty and program
+        if s['selected_faculty'] != "None": 
             form.instance.faculty = Faculty.objects.get(pk=s['selected_faculty'])
+        else: form.instance.faculty = None
+
+        if s['selected_program'] != "None": 
             form.instance.program = Program.objects.get(pk=s['selected_program'])
+        else: form.instance.program = None
+
         return super().form_valid(form)
 
 class BaseCreateView(BaseWriteView, CreateView):
@@ -229,6 +238,10 @@ def set_faculty(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
     
     faculty_id = request.POST.get('faculty_id')
+    if faculty_id == "":
+        request.session['selected_faculty'] = "None"
+        request.session['selected_program'] = "None"
+        return redirect(request.META.get('HTTP_REFERER', '/'))
     try:
         faculty_id = int(faculty_id)
     except:
@@ -258,6 +271,9 @@ def set_program(request):
         return JsonResponse({'success': False, 'error': 'Not authenticated'}, status=401)
     
     program_id = request.POST.get('program_id')
+    if program_id == "":
+        request.session['selected_program'] = "None"
+        return redirect(request.META.get('HTTP_REFERER', '/'))
     try:
         program_id = int(program_id)
     except:
