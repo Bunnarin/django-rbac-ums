@@ -64,19 +64,16 @@ class BaseListView(PermissionRequiredMixin, ListView):
             field_obj = self.model._meta.get_field(direct_field)
             direct_field_is_relation = field_obj.is_relation and field_obj.many_to_one and field_obj.concrete
             
-            if ("__" in field):
-                # default = true
-                chained_field_is_relation = True
+            if direct_field_is_relation:
+                related_fields.add(direct_field)
+
+            if ("__" in field) and direct_field_is_relation:
+                # check if the chained field is also a relation
                 field_model = field_obj.related_model
                 chained_obj = field_model._meta.get_field(field.split('__')[1])
-                chained_field_is_relation = chained_obj.is_relation and chained_obj.many_to_one and chained_obj.concrete
+                if chained_obj.is_relation and chained_obj.many_to_one and chained_obj.concrete:
+                    related_fields.add(field)
             
-            if direct_field_is_relation and chained_field_is_relation:
-                # add the chained field
-                related_fields.add(field)
-            # add the direct field anyway
-            related_fields.add(direct_field)
-
         # Apply select_related if we have any related fields
         if related_fields:
             queryset = queryset.select_related(*related_fields)
