@@ -65,7 +65,7 @@ class UserDeleteView(BaseDeleteView):
 
 class StudentListView(BaseListView):
     model = Student
-    table_fields = ['first_name', 'last_name', 'email', 'phone_number', '_class']
+    table_fields = ['user.first_name', 'user.last_name', '_class', 'user.email', 'user.phone_number']
     object_actions = [('✏️', 'users:change_student'), ('🗑️', 'users:delete_student'), ('score', 'academic:view_score')]
     actions = [('+', 'users:add_student')]
 

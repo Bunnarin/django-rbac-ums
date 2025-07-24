@@ -123,7 +123,7 @@ class ScoreScheduleEditView(PermissionRequiredMixin, FormView):
 
 class EvaluationListView(BaseListView):
     model = Evaluation
-    table_fields = ['schedule', 'response']
+    table_fields = ['schedule.course', 'schedule._class', 'schedule.professor', 'response']
     actions = [('clear all', 'academic:delete_evaluation')]
 
 class EvaluationEditView(PermissionRequiredMixin, FormView):

@@ -55,15 +55,31 @@ class BaseListView(PermissionRequiredMixin, ListView):
         if hasattr(self.model.objects, "for_user"):
             queryset = self.model.objects.for_user(self.request)
         
-        # Get all foreign key fields
-        foreign_keys = [
-            field.name for field in self.model._meta.get_fields()
-            if field.is_relation and field.many_to_one and field.concrete
-        ]
-        
-        # Apply select_related if we have any foreign keys
-        if foreign_keys:
-            queryset = queryset.select_related(*foreign_keys)
+        # Get all potential foreign key fields from table_fields
+        related_fields = set()
+        for field in getattr(self, 'table_fields', []):
+            # Add direct fields that might be foreign keys
+            field = field.replace('.', '__')
+            direct_field = field.split('__')[0]
+            field_obj = self.model._meta.get_field(direct_field)
+            direct_field_is_relation = field_obj.is_relation and field_obj.many_to_one and field_obj.concrete
+            
+            if ("__" in field):
+                # default = true
+                chained_field_is_relation = True
+                field_model = field_obj.related_model
+                chained_obj = field_model._meta.get_field(field.split('__')[1])
+                chained_field_is_relation = chained_obj.is_relation and chained_obj.many_to_one and chained_obj.concrete
+            
+            if direct_field_is_relation and chained_field_is_relation:
+                # add the chained field
+                related_fields.add(field)
+            # add the direct field anyway
+            related_fields.add(direct_field)
+
+        # Apply select_related if we have any related fields
+        if related_fields:
+            queryset = queryset.select_related(*related_fields)
         
         return queryset
 
@@ -84,15 +100,26 @@ class BaseWriteView(PermissionRequiredMixin):
         if hasattr(self.model.objects, "for_user"):
             queryset = self.model.objects.for_user(self.request)
         
-        # Get all foreign key fields
-        foreign_keys = [
-            field.name for field in self.model._meta.get_fields()
-            if field.is_relation and field.many_to_one and field.concrete
-        ]
+        # Get all potential foreign key fields from table_fields
+        related_fields = set()
+        for field in getattr(self, 'table_fields', []):
+            if '.' in field:
+                # Handle chained attributes (e.g., 'schedule._class')
+                parts = field.split('.')
+                for i in range(len(parts) - 1):
+                    related_fields.add('.'.join(parts[:i+1]))
+            else:
+                # Add direct fields that might be foreign keys
+                try:
+                    field_obj = self.model._meta.get_field(field)
+                    if field_obj.is_relation and field_obj.many_to_one and field_obj.concrete:
+                        related_fields.add(field)
+                except:
+                    continue
         
-        # Apply select_related if we have any foreign keys
-        if foreign_keys:
-            queryset = queryset.select_related(*foreign_keys)
+        # Apply select_related if we have any related fields
+        if related_fields:
+            queryset = queryset.select_related(*related_fields)
         
         return queryset
     
@@ -267,7 +294,7 @@ def set_faculty(request):
         authorized = user.has_perm('users.access_global')
         if not authorized and \
             faculty_id not in user.faculties.values_list('id', flat=True):
-            return JsonResponse({'success': False, 'error': 'Unauthorized faculty'}, status=403)
+            return JsonResponse({'error': 'Unauthorized faculty'}, status=403)
         s['selected_faculty'] = faculty_id
 
         # now set the program automatically
@@ -293,6 +320,6 @@ def set_program(request):
         user = request.user
         authorized = user.has_perm('users.access_global') or user.has_perm('users.access_faculty_wide')
         if not authorized and program_id not in user.programs.values_list('id', flat=True):
-            return JsonResponse({'success': False, 'error': 'Unauthorized program'}, status=403)
+            return JsonResponse({'error': 'Unauthorized program'}, status=403)
         s['selected_program'] = program_id
     return redirect(request.META.get('HTTP_REFERER', '/'))

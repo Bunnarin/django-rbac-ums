@@ -9,7 +9,9 @@ def get_attr_from_object(value, arg):
     Example: {{ obj|get_attr_from_object:'my_field_name' }}
     Handles cases where the attribute might be a callable (like get_FOO_display).
     """
-    try:
-        return getattr(value, arg)
-    except Exception as e:
-        return None
+    if "." in arg:
+        # chain the attribute
+        primary_attr = getattr(value, arg.split(".")[0])
+        secondary_attr = getattr(primary_attr, arg.split(".")[1])
+        return secondary_attr
+    return getattr(value, arg)
