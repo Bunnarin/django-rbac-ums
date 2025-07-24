@@ -1,9 +1,9 @@
 from django.urls import reverse_lazy
 from django.http import JsonResponse
-from django.views.generic import ListView, DeleteView, CreateView, UpdateView
+from django.views.generic import View, ListView, DeleteView, CreateView, UpdateView
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.decorators.http import require_POST
-from django.shortcuts import redirect, reverse
+from django.shortcuts import redirect, render
 from apps.organization.models import Faculty, Program
 from django import forms
 
@@ -12,7 +12,7 @@ class BaseListView(PermissionRequiredMixin, ListView):
     Base view for displaying a list of objects.
     """
     model = None
-    cruds = ["add", "change", "delete"]
+    object_actions = []
     actions = []
     template_name = 'core/generic_list.html'
     table_fields = []
@@ -28,23 +28,22 @@ class BaseListView(PermissionRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        user = self.request.user
         
         # Add table configuration
         context['table_fields'] = self.table_fields
         
         # Set up URLs
-        user = self.request.user
-        for action in self.cruds:
-            permission = f"{self.app_label}.{action}_{self.model_name}"
+        context["object_actions"] = {}
+        for action, url in self.object_actions:
+            permission = url.replace(':', '.')
             if user.has_perm(permission):
-                url = permission.replace('.', ':')  
-                context[f"{action}_url"] = url
+                context["object_actions"][action] = url
         
-        # set up action URLs
+        context["actions"] = {}
         for action, url in self.actions:
             permission = url.replace(':', '.')
             if user.has_perm(permission):
-                context["actions"] = {}
                 context["actions"][action] = url
 
         return context
@@ -229,6 +228,28 @@ class BaseDeleteView(BaseWriteView, DeleteView):
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.delete_{self.model_name}']
+
+class BaseBulkDeleteView(BaseWriteView, View):
+    """
+    Mixin for views that require permission to delete an object.
+    """
+    model = None
+    template_name = 'core/generic_delete.html'
+
+    def get_permission_required(self):
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name.lower()
+        return [f'{self.app_label}.delete_{self.model_name}']
+    
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {'object': f'{self.model._meta.verbose_name_plural}'})
+
+    def post(self, request, *args, **kwargs):
+        if hasattr(self.model.objects, 'for_user'):
+            self.model.objects.for_user(request).delete()
+        else:
+            self.model.objects.all().delete()
+        return redirect(f'{self.app_label}:view_{self.model_name}')
 
 @require_POST
 def set_faculty(request):

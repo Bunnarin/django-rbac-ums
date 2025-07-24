@@ -6,6 +6,8 @@ from .models import Student, CustomUser
 class UserListView(BaseListView):
     model = CustomUser
     table_fields = ['first_name', 'last_name', 'email', 'phone_number', 'is_professor', 'is_staff']
+    object_actions = [('✏️', 'users:change_user'), ('🗑️', 'users:delete_user')]
+    actions = [('+', 'users:add_user')]
 
     def get_queryset(self):
         return super().get_queryset().exclude(student__isnull=False)
@@ -64,7 +66,8 @@ class UserDeleteView(BaseDeleteView):
 class StudentListView(BaseListView):
     model = Student
     table_fields = ['first_name', 'last_name', 'email', 'phone_number', '_class']
-    actions = [('score', 'academic:view_score')]
+    object_actions = [('✏️', 'users:change_student'), ('🗑️', 'users:delete_student'), ('score', 'academic:view_score')]
+    actions = [('+', 'users:add_student')]
 
 class StudentCreateView(BaseCreateView):
     model = Student

@@ -1,5 +1,5 @@
 from django.views.generic import ListView
-from apps.core.views import BaseDeleteView, BaseListView, BaseCreateView, BaseUpdateView
+from apps.core.views import BaseDeleteView, BaseListView, BaseCreateView, BaseUpdateView, BaseBulkDeleteView
 from .models import Activity, ActivityTemplate
 from apps.core.forms import get_json_form
 
@@ -8,8 +8,9 @@ class ActivityListView(BaseListView):
     View for listing all activities.
     """
     model = Activity
-    cruds = ['add', 'delete']
     table_fields = ['author', 'template', 'created_at', 'response', 'faculty']
+    object_actions = [('🗑️', 'activities:delete_activity')]
+    actions = [('+', 'activities:add_activity'), ('clear all', 'activities:delete_activity')]
 
 class ActivityTemplateSelectView(ListView):
     """
@@ -41,10 +42,15 @@ class ActivityCreateView(BaseCreateView):
 
 class ActivityDeleteView(BaseDeleteView):
     model = Activity
+    
+class ActivityBulkDeleteView(BaseBulkDeleteView):
+    model = Activity
 
 class ActivityTemplateListView(BaseListView):
     model = ActivityTemplate
     table_fields = ['name']
+    object_actions = [('✏️', 'activities:change_activity_template'), ('🗑️', 'activities:delete_activity_template')]
+    actions = [('+', 'activities:add_activity_template')]
 
 class ActivityTemplateCreateView(BaseCreateView):
     model = ActivityTemplate

@@ -3,9 +3,9 @@
 
 {% block content %}
     <div class="mb-3">
-        {% if add_url %}
-            <a href="{% url add_url %}" class="btn btn-primary">Add</a>
-        {% endif %}
+        {% for action, url in actions.items %}
+            <a href="{% url url %}" class="btn btn-primary">{{ action }}</a>
+        {% endfor %}
         <button class="btn" onclick="
         XLSX.writeFile(XLSX.utils.table_to_book($('#data-table')[0]), 'export.xlsx')
         ">Export</button>
@@ -15,7 +15,7 @@
         <table class="table table-striped table-hover table-bordered" id="data-table">
             <thead>
                 <tr>
-                {% if actions or change_url or delete_url or obj.get_absolute_url %}
+                {% if object_actions or obj.get_absolute_url %}
                     <th>Actions</th>
                 {% endif %}
                 {% for field in table_fields %}
@@ -26,20 +26,14 @@
             <tbody>
             {% for obj in object_list %}
                 <tr>
-                {% if actions or change_url or delete_url or obj.get_absolute_url %}
+                {% if object_actions or obj.get_absolute_url %}
                     <td>
-                    {% if change_url %}
-                        <a href="{% url change_url obj.pk %}" class="btn btn-info">✏️</a>
-                    {% endif %}
-                    {% if delete_url %}
-                        <a href="{% url delete_url obj.pk %}" class="btn btn-danger">🗑️</a>
-                    {% endif %}
+                    {% for action, url in object_actions.items %}
+                        <a href="{% url url obj.pk %}" class="btn btn-primary">{{ action }}</a>
+                    {% endfor %}
                     {% if obj.get_absolute_url %}
                         <a href="{% url obj.get_absolute_url obj.pk %}" class="btn btn-secondary">ℹ️</a>
                     {% endif %}
-                    {% for action, url in actions.items %}
-                        <a href="{% url url obj.pk %}" class="btn btn-secondary">{{ action }}</a>
-                    {% endfor %}
                     </td>
                 {% endif %}
                 {% for field in table_fields %}

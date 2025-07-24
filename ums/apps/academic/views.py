@@ -3,7 +3,7 @@ from django.views.generic import FormView
 from django.db import transaction
 from django.urls import reverse_lazy
 from django.core.exceptions import ValidationError
-from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView
+from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseBulkDeleteView
 from apps.core.forms import get_json_form
 from apps.users.models import Student, CustomUser
 from .models import Course, Class, Schedule, Score, Evaluation, EvalationTemplate
@@ -12,6 +12,8 @@ from .forms import create_score_form_class
 class CourseListView(BaseListView):
     model = Course
     table_fields = ['name']
+    object_actions = [('✏️', 'academic:change_course'), ('🗑️', 'academic:delete_course')]
+    actions = [('+', 'academic:add_course')]
 
 class CourseCreateView(BaseCreateView):
     model = Course
@@ -24,8 +26,11 @@ class CourseDeleteView(BaseDeleteView):
 
 class ScheduleListView(BaseListView):
     model = Schedule
-    actions = [('score', 'academic:add_score'),
-               ('evaluation', 'academic:add_evaluation')]
+    object_actions = [('score', 'academic:add_score'),
+               ('evaluation', 'academic:add_evaluation'),
+               ('✏️', 'academic:change_schedule'),
+               ('🗑️', 'academic:delete_schedule')]
+    actions = [('+', 'academic:add_schedule')]
     table_fields = ['professor', 'course', '_class']
 
 class ScheduleCreateView(BaseCreateView):
@@ -50,6 +55,9 @@ class ScheduleDeleteView(BaseDeleteView):
 
 class ClassListView(BaseListView):
     model = Class
+    object_actions = [('✏️', 'academic:change_class'),
+               ('🗑️', 'academic:delete_class')]
+    actions = [('+', 'academic:add_class')]
     table_fields = ['generation', 'name']
 
 class ClassCreateView(BaseCreateView):
@@ -63,7 +71,6 @@ class ClassDeleteView(BaseDeleteView):
 
 class ScoreStudentListView(BaseListView):
     model = Score
-    cruds = []
     table_fields = ['course', 'score']
 
     def get_queryset(self):
@@ -116,8 +123,8 @@ class ScoreScheduleEditView(PermissionRequiredMixin, FormView):
 
 class EvaluationListView(BaseListView):
     model = Evaluation
-    cruds = []
     table_fields = ['schedule', 'response']
+    actions = [('clear all', 'academic:delete_evaluation')]
 
 class EvaluationEditView(PermissionRequiredMixin, FormView):
     """
@@ -147,3 +154,9 @@ class EvaluationEditView(PermissionRequiredMixin, FormView):
                 response=form.cleaned_data['response']
                 )
         return super().form_valid(form)
+
+class EvaluationBulkDeleteView(BaseBulkDeleteView):
+    """
+    delete everything
+    """
+    model = Evaluation

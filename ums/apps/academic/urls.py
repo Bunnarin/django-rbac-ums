@@ -25,4 +25,5 @@ urlpatterns = [
     # evaluation
     path('evaluations/', views.EvaluationListView.as_view(), name='view_evaluation'),
     path('evaluations/add/<int:schedule_pk>/', views.EvaluationEditView.as_view(), name='add_evaluation'),
+    path('evaluations/delete/', views.EvaluationBulkDeleteView.as_view(), name='delete_evaluation')
 ]
