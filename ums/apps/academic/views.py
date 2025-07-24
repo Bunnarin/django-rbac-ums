@@ -5,7 +5,7 @@ from django.urls import reverse_lazy
 from django.core.exceptions import ValidationError
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView
 from apps.core.forms import get_json_form
-from apps.users.models import Student
+from apps.users.models import Student, CustomUser
 from .models import Course, Class, Schedule, Score, Evaluation, EvalationTemplate
 from .forms import create_score_form_class
 
@@ -30,6 +30,14 @@ class ScheduleListView(BaseListView):
 
 class ScheduleCreateView(BaseCreateView):
     model = Schedule
+
+    def get_form(self):
+        """
+        Filter the professor queryset to exclude user with student profile to avoid bloat
+        """
+        form = super().get_form()
+        form.fields['professor'].queryset = CustomUser.objects.exclude(student__isnull=False)
+        return form
     
 class ScheduleUpdateView(BaseUpdateView):
     """
@@ -42,7 +50,7 @@ class ScheduleDeleteView(BaseDeleteView):
 
 class ClassListView(BaseListView):
     model = Class
-    table_fields = ['name']
+    table_fields = ['generation', 'name']
 
 class ClassCreateView(BaseCreateView):
     model = Class
@@ -71,7 +79,7 @@ class ScoreScheduleEditView(PermissionRequiredMixin, FormView):
 
     def get_form(self):
         self.schedule = Schedule.objects.select_related('course', '_class').get(pk=self.kwargs['schedule_pk'])
-        self.students = self.schedule._class.students.all()
+        self.students = self.schedule._class.student.all()
         self.existing_scores = {
             score.student_id: score 
             for score in Score.objects.filter(

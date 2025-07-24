@@ -23,7 +23,8 @@ class OrganizationMixin(models.Model):
         this is to ensure that get_user_rls_filter is implemented
         """
         self.get_user_rls_filter(None)
-        if self.program and self.faculty and self.faculty != self.program.faculty:
+        if hasattr(self, 'faculty') and hasattr(self, 'program') and \
+            self.faculty != self.program.faculty:
             raise ValidationError({
                 'program': 'The selected program does not belong to the assigned faculty.'
                 })

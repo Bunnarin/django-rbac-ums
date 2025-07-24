@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractUser, Group
 from phonenumber_field.modelfields import PhoneNumberField
 from apps.organization.models import Faculty, Program
-from .mixins import ProfileMixin
+from apps.core.managers import RLSManager
 from .managers import UserRLSManager
 
 class CustomUser(AbstractUser):
@@ -14,6 +14,7 @@ class CustomUser(AbstractUser):
     phone_number = PhoneNumberField(max_length=16, unique=True, blank=True, null=True)
     faculties = models.ManyToManyField(Faculty, blank = True)
     programs = models.ManyToManyField(Program, blank = True)
+    is_professor = models.BooleanField(default=False)
 
     objects = UserRLSManager()
 
@@ -55,6 +56,12 @@ class CustomUser(AbstractUser):
             self.groups.add(staff_group)
         elif not creation:
             self.groups.remove(staff_group)
+        
+        professor_group, _ = Group.objects.get_or_create(name="ALL PROFESSOR")
+        if self.is_professor:
+            self.groups.add(professor_group)
+        elif not creation:
+            self.groups.remove(professor_group)
 
         super().save(*args, **kwargs)
 
@@ -66,15 +73,17 @@ class CustomUser(AbstractUser):
             ("access_program_wide", "Program Wide Access"),
         ]
 
-class Professor(ProfileMixin):
-    pass
-
-class Student(ProfileMixin):
-    _class = models.ForeignKey(
-        'academic.Class', 
-        on_delete=models.SET_NULL, 
-        null=True, blank=True, 
-        related_name='students')
+class Student(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.PROTECT)
+    _class = models.ForeignKey('academic.Class', on_delete=models.PROTECT)
+    
+    objects = RLSManager(field_with_affiliation='_class')
+    
+    class Meta:
+        unique_together = ('_class', 'user')
+    
+    def __str__(self):
+        return self.user.__str__()
     
     def clean(self):
         _class = self._class
@@ -85,15 +94,20 @@ class Student(ProfileMixin):
     def save(self, *args, **kwargs):
         """
         last resort: ensure affiliation integrity by overriding the user input
+        also add them to the all student grp
         """
         if self._class:
             self.faculty = self._class.faculty
             self.program = self._class.program
         
+        student_group, _ = Group.objects.get_or_create(name="ALL STUDENT")
+        self.user.groups.add(student_group)
+        
         super().save(*args, **kwargs)
     
     def delete(self, *args, **kwargs):
-        # remove the user if they don't have anymore profile associated (ONLY FOR STUDENT) for clean up purpose
+        # remove the user if they don't have any more profile associated (ONLY FOR STUDENT) for clean up purpose
+        # remove the user from the student grp
         if self.user.groups.count() == 1 and \
             self.user.user_permissions.count() == 0 and \
             not Student.objects.filter(user=self.user).exclude(pk=self.pk).exists():
@@ -101,4 +115,12 @@ class Student(ProfileMixin):
             Student._meta.get_field('user').remote_field.on_delete = models.CASCADE
             self.user.delete()
             Student._meta.get_field('user').remote_field.on_delete = models.PROTECT
+        
+        student_group, _ = Group.objects.get_or_create(name="ALL STUDENT")
+        if self.user.pk:
+            self.user.groups.remove(student_group)
+
         super().delete(*args, **kwargs)
+    
+    def get_user_rls_filter(self, user):
+        return Q(user=user)

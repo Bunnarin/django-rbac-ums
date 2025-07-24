@@ -12,7 +12,9 @@ class RLSManager(models.Manager):
         example: schedule has no direct affiliation but its course field does
         """
         self.field_with_affiliation = kwargs.pop('field_with_affiliation', "")
-        self.field_with_affiliation += "__" if self.field_with_affiliation != "" else ""
+        if self.field_with_affiliation != "":
+            self.field_with_affiliation += "__"
+            self.field_with_affiliation = self.field_with_affiliation.replace('.', '__')
         super().__init__(*args, **kwargs)
     
     def for_user(self, request):
