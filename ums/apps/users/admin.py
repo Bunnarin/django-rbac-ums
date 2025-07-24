@@ -7,6 +7,15 @@ from .models import Student, CustomUser
 # Unregister default allauth email admin since we don't need it
 admin.site.unregister(EmailAddress)
 
+# allow only editing in the user admin
+@admin.register(CustomUser)
+class CustomUserAdmin(admin.ModelAdmin):
+    fields = ['username']
+    def get_add_permission(self, request):
+        return False
+    def get_delete_permission(self, request):
+        return False
+
 # when you need to bypass the default behaviour of the student and prof form
 admin.site.register(Student)
 

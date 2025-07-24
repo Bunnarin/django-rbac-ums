@@ -36,7 +36,7 @@ class Class(DetailMixin, OrganizationMixin):
 
     def get_user_rls_filter(self, user):
         # the class one is teaching or the class one is a student in
-        return Q(student__user=user) | Q(schedule__professor=user)
+        return Q(students__user=user) | Q(schedule__professor=user)
 
 class Schedule(DetailMixin, models.Model):
     """
@@ -56,7 +56,7 @@ class Schedule(DetailMixin, models.Model):
     objects = RLSManager(field_with_affiliation="course")
 
     def get_user_rls_filter(self, user):
-        return Q(_class__student__user=user) | Q(professor=user)
+        return Q(_class__students__user=user) | Q(professor=user)
     
     def __str__(self):
         return f"{self.professor} - {self.course} - {self._class}"

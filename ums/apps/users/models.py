@@ -22,7 +22,7 @@ class CustomUser(AbstractUser):
         return f"{self.first_name} {self.last_name}"
     
     def get_user_rls_filter(self, user):
-        return Q(username=user.username)
+        return Q(username=user__username)
 
     def save(self, *args, **kwargs):
         """
@@ -34,23 +34,19 @@ class CustomUser(AbstractUser):
         if self.is_superuser:
             return super().save(*args, **kwargs)
 
+        self.username = self.first_name + self.last_name
+
         creation = not self.pk
         if creation:
             self.set_unusable_password()
         
-        # ensures that we can have the same blank email
+        # ensures that we can have the same blank email and phone number
         if self.email == '':
             self.email = None
-        
-        # make sure username is unique (but can only have 2 user with the same name)
-        new_username = self.first_name.lower() + self.last_name.lower()
-        if self.username != new_username:
-            if CustomUser.objects.filter(username=new_username).exists():
-                self.username = new_username + str(1)
-            else:
-                self.username = new_username
+        if self.phone_number == '':
+            self.phone_number = None
                 
-        # ensure that staff status always in staff group and if we create a first superuser it thor error for some reason
+        # ensure that staff status always in staff n prof group
         staff_group, _ = Group.objects.get_or_create(name="ALL STAFF")
         if self.is_staff:
             self.groups.add(staff_group)
@@ -75,7 +71,7 @@ class CustomUser(AbstractUser):
 
 class Student(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.PROTECT)
-    _class = models.ForeignKey('academic.Class', on_delete=models.PROTECT)
+    _class = models.ForeignKey('academic.Class', on_delete=models.PROTECT, related_name="students")
     
     objects = RLSManager(field_with_affiliation='_class')
     

@@ -86,16 +86,15 @@ class ScoreScheduleEditView(PermissionRequiredMixin, FormView):
 
     def get_form(self):
         self.schedule = Schedule.objects.select_related('course', '_class').get(pk=self.kwargs['schedule_pk'])
-        self.students = self.schedule._class.student.all()
+        self.students = self.schedule._class.students.all()
         self.existing_scores = {
             score.student_id: score 
             for score in Score.objects.filter(
                 student__in=self.students, course=self.schedule.course
                 )
         }
-        form_class = create_score_form_class(self.students)
-        form = form_class(self.request.POST or None, existing_scores=self.existing_scores)
-        return form
+        Form = create_score_form_class(self.students)
+        return Form(self.request.POST or None, existing_scores=self.existing_scores)
     
     @transaction.atomic
     def form_valid(self, form):
@@ -106,12 +105,13 @@ class ScoreScheduleEditView(PermissionRequiredMixin, FormView):
                 # Only process if score is different from inital value
                 if score_value == self.existing_scores.get(student.id):
                     continue
-                score_objects.append(Score(
-                    student=student,
-                    course=self.schedule.course,
-                    score=score_value
-                ))
-            
+                score_objects.append(
+                    Score(
+                        student=student,
+                        course=self.schedule.course,
+                        score=score_value
+                    )
+                )            
             # Use bulk_update_or_create to handle both create and update
             if score_objects:
                 Score.objects.bulk_update_or_create(
@@ -126,7 +126,7 @@ class EvaluationListView(BaseListView):
     table_fields = ['schedule.course', 'schedule._class', 'schedule.professor', 'response']
     actions = [('clear all', 'academic:delete_evaluation')]
 
-class EvaluationEditView(PermissionRequiredMixin, FormView):
+class EvaluationCreateView(PermissionRequiredMixin, FormView):
     """
     View for creating/updating an evaluation for a schedule.
     """

@@ -5,7 +5,6 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.decorators.http import require_POST
 from django.shortcuts import redirect, render
 from apps.organization.models import Faculty, Program
-from django import forms
 
 class BaseListView(PermissionRequiredMixin, ListView):
     """
@@ -50,11 +49,9 @@ class BaseListView(PermissionRequiredMixin, ListView):
         
     def get_queryset(self):
         queryset = super().get_queryset()
-        
         # Apply RLS filtering if available
         if hasattr(self.model.objects, "for_user"):
             queryset = self.model.objects.for_user(self.request)
-        
         # Get all potential foreign key fields from table_fields
         related_fields = set()
         for field in getattr(self, 'table_fields', []):
@@ -91,34 +88,16 @@ class BaseWriteView(PermissionRequiredMixin):
         return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
     
     def get_queryset(self):
-        queryset = super().get_queryset()
-        
+        queryset = super().get_queryset() 
         # Apply RLS filtering if available
         if hasattr(self.model.objects, "for_user"):
             queryset = self.model.objects.for_user(self.request)
-        
-        # Get all potential foreign key fields from table_fields
-        related_fields = set()
-        for field in getattr(self, 'table_fields', []):
-            if '.' in field:
-                # Handle chained attributes (e.g., 'schedule._class')
-                parts = field.split('.')
-                for i in range(len(parts) - 1):
-                    related_fields.add('.'.join(parts[:i+1]))
-            else:
-                # Add direct fields that might be foreign keys
-                try:
-                    field_obj = self.model._meta.get_field(field)
-                    if field_obj.is_relation and field_obj.many_to_one and field_obj.concrete:
-                        related_fields.add(field)
-                except:
-                    continue
-        
-        # Apply select_related if we have any related fields
-        if related_fields:
-            queryset = queryset.select_related(*related_fields)
-        
         return queryset
+    
+    def get_form_class(self):
+        if self.form_class:
+            return self.form_class
+        return super().get_form_class()
     
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
@@ -131,17 +110,13 @@ class BaseWriteView(PermissionRequiredMixin):
             try: 
                 related_model = self.model._meta.get_field(field_name).related_model
                 related_model_fields = [f.name for f in related_model._meta.fields]
-                queryset = related_model.objects.all()
-                
-                # Check if the related model has faculty and program fields
+                queryset = field.queryset
                 if 'faculty' in related_model_fields:
                     queryset = queryset.filter(faculty_id=s['selected_faculty'])
                 if 'program' in related_model_fields:
                     queryset = queryset.filter(program_id=s['selected_program'])
-                field.queryset = queryset
             except:
                 continue
-
         return form
     
     def form_valid(self, form):
@@ -170,67 +145,6 @@ class BaseCreateView(BaseWriteView, CreateView):
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.add_{self.model_name}']
-    
-    def get_form_class(self):
-        # allows for custom form_class
-        if self.form_class:
-            return self.form_class
-        
-        if not hasattr(self, 'flat_fields'):
-            return super().get_form_class()
-            
-        # this intercept the default model form and make inject the flat fields 
-        class DynamicForm(forms.ModelForm):
-            class Meta:
-                model = self.model
-                fields = self.fields or '__all__'
-                flat_fields = self.flat_fields
-                
-            def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
-                for field_name, field_list in self.Meta.flat_fields:
-                    # Get the model of the flat field
-                    flat_field = self._meta.model._meta.get_field(field_name)
-                    related_model = flat_field.related_model
-                    # Add fields from the related model
-                    for field in field_list:
-                        self.fields[f'{field_name}__{field}'] = forms.CharField(
-                            label=f"{field_name.capitalize()} {field.replace('_', ' ')}",
-                            required=field in getattr(related_model._meta, 'required_fields', [])
-                        )
-                    # make the default field name optional and add help text
-                    if self.fields.get(field_name):
-                        self.fields[field_name].required = False
-                        self.fields[field_name].help_text = f"select this field if you do not wish to create another {field_name}"
-        return DynamicForm
-        
-    def form_valid(self, form):
-        # Handle related objects before the main save
-        if not hasattr(form.Meta, 'flat_fields'):
-            return super().form_valid(form)
-        for field_name, field_list in form.Meta.flat_fields:
-            # if user select the flat field, then we don't parse the expanded fields
-            if form.cleaned_data.get(field_name):
-                continue
-            # Get the model for the flat field
-            flat_field = self.model._meta.get_field(field_name)
-            related_model = flat_field.related_model
-            # Get data for related model
-            related_data = {}
-            for field in field_list:
-                form_field = f'{field_name}__{field}'
-                if form_field in form.cleaned_data:
-                    value = form.cleaned_data.pop(form_field)
-                    if value == '':
-                        value = None
-                    related_data[field] = value
-            
-            # Create related object if we have data
-            if related_data:
-                related_obj = related_model.objects.create(**related_data)
-                setattr(form.instance, field_name, related_obj)
-        
-        return super().form_valid(form)
 
 class BaseUpdateView(BaseWriteView, UpdateView):
     """
