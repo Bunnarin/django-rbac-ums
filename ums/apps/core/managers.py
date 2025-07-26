@@ -1,4 +1,9 @@
+from math import e
+import os
+import inspect
+from django.conf import settings
 from django.db import models
+from django.core.exceptions import ImproperlyConfigured
 
 class RLSManager(models.Manager):
     """
@@ -17,8 +22,29 @@ class RLSManager(models.Manager):
             self.field_with_affiliation = self.field_with_affiliation.replace('.', '__')
         super().__init__(*args, **kwargs)
     
-    def for_user(self, request):
-        queryset = self.get_queryset()
+    def _is_called_by_me(self):
+        project_root = str(settings.PROJECT_DIR)
+        caller_frame = inspect.currentframe().f_back.f_back
+        caller_filepath = caller_frame.f_globals['__file__']
+        absolute_caller_path = os.path.abspath(caller_filepath)
+        return absolute_caller_path.startswith(project_root)
+
+    def get_queryset(self, **kwargs):
+        if 'request' in kwargs:
+            request = kwargs.pop('request')
+            if request is None:
+                # explicitly not filter
+                return super().get_queryset()
+            else:
+                return self._for_request(request)
+        elif self._is_called_by_me():
+            raise ImproperlyConfigured("missing request obj before querying")
+        else: 
+            # django called it, we let it pass
+            return super().get_queryset()
+        
+    def _for_request(self, request):
+        queryset = super().get_queryset()
         user = request.user
         s = request.session
         faculty_id = s.get('selected_faculty')
@@ -40,7 +66,7 @@ class RLSManager(models.Manager):
 
             return queryset.filter(**filters)
 
-        elif hasattr(self.model, 'get_user_rls_filter'):
+        else:
             q = self.model().get_user_rls_filter(user)
             return queryset.filter(q)
 

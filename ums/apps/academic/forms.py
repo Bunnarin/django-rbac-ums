@@ -1,9 +1,9 @@
-from django.forms import ModelForm, IntegerField
-from apps.academic.models import Score
+from django import forms
+from apps.academic.models import Score, Schedule
 
 def create_score_form_class(students):
     """Create a dynamic form class with score fields for each student"""
-    class ScoreBulkForm(ModelForm):
+    class ScoreBulkForm(forms.ModelForm):
         def __init__(self, *args, **kwargs):
             existing_scores = kwargs.pop('existing_scores', {})
             super().__init__(*args, **kwargs)
@@ -13,7 +13,7 @@ def create_score_form_class(students):
                 initial_value = existing_scores.get(student.id)
                 initial_score = initial_value.score if initial_value else 0
                     
-                self.fields[f'score_{student.id}'] = IntegerField(
+                self.fields[f'score_{student.id}'] = forms.IntegerField(
                     label=student,
                     min_value=0,
                     max_value=100,
@@ -25,3 +25,13 @@ def create_score_form_class(students):
             fields = []  # We'll add fields dynamically
     
     return ScoreBulkForm
+
+class ScheduleForm(forms.ModelForm):
+    first_name = forms.CharField(required=True)
+    last_name = forms.CharField(required=True)
+    email = forms.EmailField(required=False)
+    phone_number = forms.CharField(required=False)
+    
+    class Meta:
+        model = Schedule
+        fields = ['course', '_class']

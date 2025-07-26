@@ -8,7 +8,6 @@ def organization_data(request):
     user = request.user
     if not user.is_authenticated:
         return context
-    
     user_faculties = user.faculties.all()
     if user.has_perm('users.access_global'):
         context['all_faculties'] = Faculty.objects.all()

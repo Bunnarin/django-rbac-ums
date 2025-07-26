@@ -7,11 +7,11 @@ from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDe
 from apps.core.forms import get_json_form
 from apps.users.models import Student, CustomUser
 from .models import Course, Class, Schedule, Score, Evaluation, EvalationTemplate
-from .forms import create_score_form_class
+from .forms import create_score_form_class, ScheduleForm
 
 class CourseListView(BaseListView):
     model = Course
-    table_fields = ['name']
+    table_fields = ['name', 'year']
     object_actions = [('✏️', 'academic:change_course'), ('🗑️', 'academic:delete_course')]
     actions = [('+', 'academic:add_course')]
 
@@ -31,24 +31,43 @@ class ScheduleListView(BaseListView):
                ('✏️', 'academic:change_schedule'),
                ('🗑️', 'academic:delete_schedule')]
     actions = [('+', 'academic:add_schedule')]
-    table_fields = ['professor', 'course', '_class']
+    table_fields = ['professor', 'course', 'course.year', '_class']
 
 class ScheduleCreateView(BaseCreateView):
     model = Schedule
+    form_class = ScheduleForm
 
-    def get_form(self):
-        """
-        Filter the professor queryset to exclude user with student profile to avoid bloat
-        """
-        form = super().get_form()
-        form.fields['professor'].queryset = CustomUser.objects.exclude(student__isnull=False)
-        return form
+    def form_valid(self, form):
+        data = form.cleaned_data
+        user_data = {
+            'first_name': data['first_name'],
+            'last_name': data['last_name'],
+            'defaults': {
+                'email': data['email'],
+                'phone_number': data['phone_number']
+            }
+        }
+        prof, _ = CustomUser.objects.update_or_create(**user_data)
+        student = form.save(commit=False)
+        student.professor = prof
+        student.save()
+        return super().form_valid(form)
     
-class ScheduleUpdateView(BaseUpdateView):
+class ScheduleUpdateView(ScheduleCreateView, BaseUpdateView):
     """
     View for updating schedules with dynamic timeframe builder.
     """
-    model = Schedule
+    def get_initial(self):
+        initial = super().get_initial()
+        student = self.get_object()
+        prof = student.professor
+        initial.update({
+            'first_name': prof.first_name,
+            'last_name': prof.last_name,
+            'email': prof.email,
+            'phone_number': prof.phone_number,
+        })
+        return initial
 
 class ScheduleDeleteView(BaseDeleteView):
     model = Schedule
@@ -85,7 +104,8 @@ class ScoreScheduleEditView(PermissionRequiredMixin, FormView):
     success_url = reverse_lazy('academic:view_schedule')
 
     def get_form(self):
-        self.schedule = Schedule.objects.select_related('course', '_class').get(pk=self.kwargs['schedule_pk'])
+        self.schedule = Schedule.objects.select_related(
+            'course', '_class').get(pk=self.kwargs['schedule_pk'])
         self.students = self.schedule._class.students.all()
         self.existing_scores = {
             score.student_id: score 

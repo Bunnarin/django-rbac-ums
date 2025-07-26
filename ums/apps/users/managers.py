@@ -1,12 +1,13 @@
 from django.contrib.auth.models import UserManager
+from apps.core.managers import RLSManager
 
-class UserRLSManager(UserManager):
+class UserRLSManager(RLSManager, UserManager):
     """
     Custom manager that implements Row-Level Security (RLS) filtering.
     """
 
-    def for_user(self, request):
-        queryset = self.get_queryset()
+    def _for_request(self, request):
+        queryset = super(UserManager, self).get_queryset()
         user = request.user
 
         faculty_id = request.session.get('selected_faculty')

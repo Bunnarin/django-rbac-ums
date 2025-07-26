@@ -48,10 +48,7 @@ class BaseListView(PermissionRequiredMixin, ListView):
         return context
         
     def get_queryset(self):
-        queryset = super().get_queryset()
-        # Apply RLS filtering if available
-        if hasattr(self.model.objects, "for_user"):
-            queryset = self.model.objects.for_user(self.request)
+        queryset = self.model.objects.get_queryset(request=self.request)
         # Get all potential foreign key fields from table_fields
         related_fields = set()
         for field in getattr(self, 'table_fields', []):
@@ -88,11 +85,7 @@ class BaseWriteView(PermissionRequiredMixin):
         return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
     
     def get_queryset(self):
-        queryset = super().get_queryset() 
-        # Apply RLS filtering if available
-        if hasattr(self.model.objects, "for_user"):
-            queryset = self.model.objects.for_user(self.request)
-        return queryset
+        return self.model.objects.get_queryset(request=self.request)
     
     def get_form_class(self):
         if self.form_class:
@@ -110,11 +103,10 @@ class BaseWriteView(PermissionRequiredMixin):
             try: 
                 related_model = self.model._meta.get_field(field_name).related_model
                 related_model_fields = [f.name for f in related_model._meta.fields]
-                queryset = field.queryset
                 if 'faculty' in related_model_fields:
-                    queryset = queryset.filter(faculty_id=s['selected_faculty'])
+                    field.queryset = field.queryset.filter(faculty_id=s['selected_faculty'])
                 if 'program' in related_model_fields:
-                    queryset = queryset.filter(program_id=s['selected_program'])
+                    field.queryset = field.queryset.filter(program_id=s['selected_program'])
             except:
                 continue
         return form
@@ -183,10 +175,7 @@ class BaseBulkDeleteView(BaseWriteView, View):
         return render(request, self.template_name, {'object': f'{self.model._meta.verbose_name_plural}'})
 
     def post(self, request, *args, **kwargs):
-        if hasattr(self.model.objects, 'for_user'):
-            self.model.objects.for_user(request).delete()
-        else:
-            self.model.objects.all().delete()
+        self.model.objects.get_queryset(request=request).delete()
         return redirect(f'{self.app_label}:view_{self.model_name}')
 
 @require_POST

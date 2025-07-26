@@ -19,10 +19,6 @@ class OrganizationMixin(models.Model):
 
     def clean(self):
         super().clean()
-        """
-        this is to ensure that get_user_rls_filter is implemented
-        """
-        self.get_user_rls_filter(None)
         if hasattr(self, 'faculty') and hasattr(self, 'program') and \
             self.faculty != self.program.faculty:
             raise ValidationError({
@@ -57,10 +53,6 @@ class OrganizationNullMixin(models.Model):
 
     def clean(self):
         super().clean()
-        """
-        this is to ensure that get_user_rls_filter is implemented
-        """
-        self.get_user_rls_filter(None)
         if self.program and self.faculty and self.faculty != self.program.faculty:
             raise ValidationError({
                 'program': 'The selected program does not belong to the assigned faculty.'
@@ -91,7 +83,6 @@ class ProgramNullMixin(models.Model):
 
     def clean(self):
         super().clean()
-        self.get_user_rls_filter(None)
         if self.program and self.faculty and self.faculty != self.program.faculty:
             raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
 
