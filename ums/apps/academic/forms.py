@@ -1,5 +1,6 @@
 from django import forms
 from apps.academic.models import Score, Schedule
+from apps.users.models import User
 
 def create_score_form_class(students):
     """Create a dynamic form class with score fields for each student"""
@@ -27,11 +28,22 @@ def create_score_form_class(students):
     return ScoreBulkForm
 
 class ScheduleForm(forms.ModelForm):
-    first_name = forms.CharField(required=True)
-    last_name = forms.CharField(required=True)
-    email = forms.EmailField(required=False)
-    phone_number = forms.CharField(required=False)
+    # add the prof query field to get or create
+    first_name = forms.CharField()
+    last_name = forms.CharField()
     
     class Meta:
         model = Schedule
-        fields = ['course', '_class']
+        fields = ['course', '_class', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    
+    def save(self, commit=True):
+        data = self.cleaned_data
+        prof, _ = User.objects.update_or_create(
+            first_name=data['first_name'], last_name=data['last_name']
+            )
+
+        schedule = super().save(commit=False)
+        schedule.professor = prof
+        if commit:
+            schedule.save()
+        return schedule

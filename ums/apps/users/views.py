@@ -1,29 +1,27 @@
-from django.urls import reverse_lazy
-from django.views.generic import CreateView, UpdateView
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView
 from braces.views import UserFormKwargsMixin
-from .models import Student, CustomUser
+from .models import Student, User
 from .forms import UserForm, StudentForm
 
 class UserListView(BaseListView):
-    model = CustomUser
-    table_fields = ['first_name', 'last_name', 'email', 'phone_number', 'is_professor', 'is_staff']
-    object_actions = [('✏️', 'users:change_customuser'), ('🗑️', 'users:delete_customuser')]
-    actions = [('+', 'users:add_customuser')]
+    model = User
+    table_fields = ['first_name', 'last_name', 'is_professor', 'is_staff', 'email', 'phone_number']
+    object_actions = [('✏️', 'users:change_user'), ('🗑️', 'users:delete_user')]
+    actions = [('+', 'users:add_user')]
 
     def get_queryset(self):
         return super().get_queryset().exclude(student__isnull=False)
 
 class UserCreateView(UserFormKwargsMixin, BaseCreateView):
     # this mixin will inject the user into the kwargs
-    model = CustomUser
+    model = User
     form_class = UserForm
 
 class UserUpdateView(UserCreateView, BaseUpdateView):
     pass
 
 class UserDeleteView(BaseDeleteView):
-    model = CustomUser
+    model = User
 
 class StudentListView(BaseListView):
     model = Student
@@ -31,34 +29,19 @@ class StudentListView(BaseListView):
     object_actions = [
         ('✏️', 'users:change_student'), 
         ('🗑️', 'users:delete_student'), 
-        ('score', 'academic:view_score')]
+        ('score', 'academic:view_score')
+    ]
     actions = [('+', 'users:add_student')]
 
 class StudentCreateView(BaseCreateView):
     model = Student
     form_class = StudentForm
 
-    def form_valid(self, form):
-        data = form.cleaned_data
-        user_data = {
-            'first_name': data['first_name'],
-            'last_name': data['last_name'],
-            'defaults': {
-                'email': data['email'],
-                'phone_number': data['phone_number']
-            }
-        }
-        user, _ = CustomUser.objects.update_or_create(**user_data)
-        student = form.save(commit=False)
-        student.professor = user
-        student.save()
-        return super().form_valid(form)
-
 class StudentUpdateView(StudentCreateView, BaseUpdateView):
     def get_initial(self):
         initial = super().get_initial()
         student = self.get_object()
-        user = student.professor
+        user = student.user
         initial.update({
             'first_name': user.first_name,
             'last_name': user.last_name,

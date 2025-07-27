@@ -2,14 +2,14 @@ from django.contrib import admin
 from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
 from allauth.account.models import EmailAddress
-from .models import Student, CustomUser
+from .models import Student, User
 
 # Unregister default allauth email admin since we don't need it
 admin.site.unregister(EmailAddress)
 
 # allow only editing in the user admin
-@admin.register(CustomUser)
-class CustomUserAdmin(admin.ModelAdmin):
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
     fields = ['username']
     def get_add_permission(self, request):
         return False
@@ -30,6 +30,9 @@ class CustomGroupAdmin(admin.ModelAdmin):
     search_fields = ("name",)
     ordering = ("name",)
     filter_horizontal = ("permissions",)
+
+    def get_delete_permission(self, request):
+        return False
 
     def formfield_for_manytomany(self, db_field, request=None, **kwargs):
         """

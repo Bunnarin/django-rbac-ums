@@ -7,7 +7,7 @@ from apps.organization.models import Faculty, Program
 from apps.core.managers import RLSManager
 from .managers import UserRLSManager
 
-class CustomUser(AbstractUser):
+class User(AbstractUser):
     first_name = models.CharField("first name", max_length=30)
     last_name = models.CharField("last name", max_length=30)
     email = models.EmailField("email address", unique=True, blank=True, null=True)
@@ -70,7 +70,7 @@ class CustomUser(AbstractUser):
         ]
 
 class Student(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.PROTECT)
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
     _class = models.ForeignKey('academic.Class', on_delete=models.PROTECT, related_name="students")
     
     objects = RLSManager(field_with_affiliation='_class')

@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from bulk_update_or_create import BulkUpdateOrCreateQuerySet
 from django_jsonform.models.fields import JSONField
 from apps.organization.mixins import OrganizationMixin
-from apps.users.models import CustomUser, Student
+from apps.users.models import User, Student
 from apps.core.mixins import DetailMixin
 from apps.core.managers import RLSManager
 
@@ -40,7 +40,7 @@ class Schedule(DetailMixin, models.Model):
     """
     Stores the schedule for a professor for a course for a class
     """
-    professor = models.ForeignKey(CustomUser, on_delete=models.PROTECT)
+    professor = models.ForeignKey(User, on_delete=models.PROTECT)
     course = models.ForeignKey(Course, on_delete=models.PROTECT)
     _class = models.ForeignKey(Class, on_delete=models.PROTECT, related_name="schedules")
     monday = models.CharField(max_length=13, null=True, blank=True)

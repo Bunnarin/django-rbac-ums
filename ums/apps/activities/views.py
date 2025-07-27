@@ -8,7 +8,7 @@ class ActivityListView(BaseListView):
     View for listing all activities.
     """
     model = Activity
-    table_fields = ['author', 'template', 'created_at', 'response', 'faculty']
+    table_fields = ['author', 'template', 'created_at', 'response']
     object_actions = [('🗑️', 'activities:delete_activity')]
     actions = [('+', 'activities:add_activity'), ('clear all', 'activities:delete_activity')]
 
@@ -49,8 +49,8 @@ class ActivityBulkDeleteView(BaseBulkDeleteView):
 class ActivityTemplateListView(BaseListView):
     model = ActivityTemplate
     table_fields = ['name']
-    object_actions = [('✏️', 'activities:change_activity_template'), ('🗑️', 'activities:delete_activity_template')]
-    actions = [('+', 'activities:add_activity_template')]
+    object_actions = [('✏️', 'activities:change_activitytemplate'), ('🗑️', 'activities:delete_activitytemplate')]
+    actions = [('+', 'activities:add_activitytemplate')]
 
 class ActivityTemplateCreateView(BaseCreateView):
     model = ActivityTemplate
@@ -60,6 +60,5 @@ class ActivityTemplateUpdateView(BaseUpdateView):
 
 class ActivityTemplateDeleteView(BaseDeleteView):
     model = ActivityTemplate
-
 
 

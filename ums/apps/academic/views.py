@@ -5,7 +5,7 @@ from django.urls import reverse_lazy
 from django.core.exceptions import ValidationError
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseBulkDeleteView
 from apps.core.forms import get_json_form
-from apps.users.models import Student, CustomUser
+from apps.users.models import Student
 from .models import Course, Class, Schedule, Score, Evaluation, EvalationTemplate
 from .forms import create_score_form_class, ScheduleForm
 
@@ -36,22 +36,6 @@ class ScheduleListView(BaseListView):
 class ScheduleCreateView(BaseCreateView):
     model = Schedule
     form_class = ScheduleForm
-
-    def form_valid(self, form):
-        data = form.cleaned_data
-        user_data = {
-            'first_name': data['first_name'],
-            'last_name': data['last_name'],
-            'defaults': {
-                'email': data['email'],
-                'phone_number': data['phone_number']
-            }
-        }
-        prof, _ = CustomUser.objects.update_or_create(**user_data)
-        student = form.save(commit=False)
-        student.professor = prof
-        student.save()
-        return super().form_valid(form)
     
 class ScheduleUpdateView(ScheduleCreateView, BaseUpdateView):
     """
@@ -64,8 +48,6 @@ class ScheduleUpdateView(ScheduleCreateView, BaseUpdateView):
         initial.update({
             'first_name': prof.first_name,
             'last_name': prof.last_name,
-            'email': prof.email,
-            'phone_number': prof.phone_number,
         })
         return initial
 

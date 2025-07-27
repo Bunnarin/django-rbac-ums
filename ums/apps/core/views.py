@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.decorators.http import require_POST
 from django.shortcuts import redirect, render
 from apps.organization.models import Faculty, Program
+from apps.core.managers import RLSManager
 
 class BaseListView(PermissionRequiredMixin, ListView):
     """
@@ -48,7 +49,11 @@ class BaseListView(PermissionRequiredMixin, ListView):
         return context
         
     def get_queryset(self):
-        queryset = self.model.objects.get_queryset(request=self.request)
+        # filter RLS sin
+        if issubclass(self.model.objects.__class__, RLSManager):
+            queryset = self.model.objects.get_queryset(request=self.request)
+        else:
+            queryset = super().get_queryset()
         # Get all potential foreign key fields from table_fields
         related_fields = set()
         for field in getattr(self, 'table_fields', []):
@@ -85,7 +90,9 @@ class BaseWriteView(PermissionRequiredMixin):
         return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
     
     def get_queryset(self):
-        return self.model.objects.get_queryset(request=self.request)
+        if issubclass(self.model.objects.__class__, RLSManager):
+            return self.model.objects.get_queryset(request=self.request)
+        return super().get_queryset()
     
     def get_form_class(self):
         if self.form_class:
@@ -95,18 +102,16 @@ class BaseWriteView(PermissionRequiredMixin):
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
         # remove the faculty and program field cuz we gonna inject them instead
-        form.fields.pop('faculty', None)
-        form.fields.pop('program', None)
-        # filter any related model with faculty and program
-        s = self.request.session
+        if form.fields.get('faculty'):
+            form.fields.pop('faculty')
+        if form.fields.get('program'):
+            form.fields.pop('program')
+        # filter the field if it has affiliation
         for field_name, field in form.fields.items():
             try: 
                 related_model = self.model._meta.get_field(field_name).related_model
-                related_model_fields = [f.name for f in related_model._meta.fields]
-                if 'faculty' in related_model_fields:
-                    field.queryset = field.queryset.filter(faculty_id=s['selected_faculty'])
-                if 'program' in related_model_fields:
-                    field.queryset = field.queryset.filter(program_id=s['selected_program'])
+                if issubclass(related_model.objects.__class__, RLSManager):
+                    field.queryset = related_model.objects.get_queryset(request=self.request)
             except:
                 continue
         return form

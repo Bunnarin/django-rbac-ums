@@ -136,7 +136,7 @@ class Command(BaseCommand):
                     self.stdout.write(f'  Deleted: {item}')
         
         # Delete any .pyc files
-        for root, _, files in os.walk(base_dir):
+        for root, _, files in os.walk(project_dir):
             for file in files:
                 if file.endswith('.pyc'):
                     os.remove(os.path.join(root, file))
