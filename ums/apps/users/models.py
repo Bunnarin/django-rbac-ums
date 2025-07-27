@@ -71,7 +71,7 @@ class User(AbstractUser):
 
 class Student(models.Model):
     user = models.ForeignKey(User, on_delete=models.PROTECT)
-    _class = models.ForeignKey('academic.Class', on_delete=models.PROTECT, related_name="students")
+    _class = models.ForeignKey('academic.Class', on_delete=models.SET_NULL, related_name="students", null=True, blank=True)
     
     objects = RLSManager(field_with_affiliation='_class')
     

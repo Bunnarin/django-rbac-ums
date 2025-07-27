@@ -13,14 +13,14 @@
                 {{ form|crispy }}
                 <button type="submit" class="btn btn-primary">Submit</button>
             </form>
+            <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
         </div>
     </div>
 {% endblock %}
 
 {% block extra_js %}
 {{ block.super }}
-
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<!-- for select2 -->
 <script>
     $(document).ready(function() {
         // Initialize Select2 on all select elements

@@ -85,9 +85,15 @@ class BaseWriteView(PermissionRequiredMixin):
     """
     pk_url_kwarg = 'pk'
     fields = '__all__'
+    template_name = 'core/generic_form.html'
     
     def get_success_url(self):
         return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['cancel_url'] = reverse_lazy(f'{self.app_label}:view_{self.model_name}')
+        return context
     
     def get_queryset(self):
         if issubclass(self.model.objects.__class__, RLSManager):
@@ -107,13 +113,10 @@ class BaseWriteView(PermissionRequiredMixin):
         if form.fields.get('program'):
             form.fields.pop('program')
         # filter the field if it has affiliation
-        for field_name, field in form.fields.items():
-            try: 
-                related_model = self.model._meta.get_field(field_name).related_model
-                if issubclass(related_model.objects.__class__, RLSManager):
-                    field.queryset = related_model.objects.get_queryset(request=self.request)
-            except:
-                continue
+        for related_field in [r for r in form.fields if r.endswith("_id")]:
+            related_model = self.model._meta.get_field(related_field).related_model
+            if issubclass(related_model.objects.__class__, RLSManager):
+                form.fields[related_field].queryset = related_model.objects.get_queryset(request=self.request)
         return form
     
     def form_valid(self, form):
@@ -121,14 +124,16 @@ class BaseWriteView(PermissionRequiredMixin):
             return super().form_valid(form)
 
         s = self.request.session
-        # set the faculty and program
-        if s['selected_faculty'] != "None": 
+        # inject the faculty and program
+        if s['selected_faculty'] == "None": 
+            form.instance.faculty = None
+        else: 
             form.instance.faculty = Faculty.objects.get(pk=s['selected_faculty'])
-        else: form.instance.faculty = None
 
-        if s['selected_program'] != "None": 
+        if s['selected_program'] == "None": 
+            form.instance.program = None
+        else: 
             form.instance.program = Program.objects.get(pk=s['selected_program'])
-        else: form.instance.program = None
 
         return super().form_valid(form)
 
@@ -136,7 +141,6 @@ class BaseCreateView(BaseWriteView, CreateView):
     """
     Mixin for views that require permission to add an object.
     """
-    template_name = 'core/generic_form.html'
     
     def get_permission_required(self):
         self.app_label = self.model._meta.app_label
@@ -147,7 +151,6 @@ class BaseUpdateView(BaseWriteView, UpdateView):
     """
     Mixin for views that require permission to update an object.
     """
-    template_name = 'core/generic_form.html'
     def get_permission_required(self):
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
@@ -157,19 +160,23 @@ class BaseDeleteView(BaseWriteView, DeleteView):
     """
     Mixin for views that require permission to delete an object.
     """
-    template_name = 'core/generic_delete.html'
-
     def get_permission_required(self):
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
         return [f'{self.app_label}.delete_{self.model_name}']
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        obj = self.get_object()
+        context['title'] = f"are you sure you want to delete {obj}?"
+        return context
 
 class BaseBulkDeleteView(BaseWriteView, View):
     """
     Mixin for views that require permission to delete an object.
     """
     model = None
-    template_name = 'core/generic_delete.html'
+    template_name = 'core/generic_form.html'
 
     def get_permission_required(self):
         self.app_label = self.model._meta.app_label
@@ -182,6 +189,11 @@ class BaseBulkDeleteView(BaseWriteView, View):
     def post(self, request, *args, **kwargs):
         self.model.objects.get_queryset(request=request).delete()
         return redirect(f'{self.app_label}:view_{self.model_name}')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['title'] = f"are you sure you want to delete all these {self.model_name}s?"
+        return context
 
 @require_POST
 def set_faculty(request):
