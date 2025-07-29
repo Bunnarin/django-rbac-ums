@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from apps.academic.models import Score, Schedule
 from apps.users.models import User
 
@@ -31,11 +32,31 @@ class ScheduleForm(forms.ModelForm):
     # add the prof query field to get or create
     first_name = forms.CharField()
     last_name = forms.CharField()
+    new_user = forms.BooleanField(required=False, initial=True)
     
     class Meta:
         model = Schedule
         fields = ['course', '_class', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
     
+    def clean(self):
+        """
+        this is to ensure the user does not typo name and to confirm their intention
+        """
+        data = super().clean()
+        # check if user acknowledged and submit again
+        if hasattr(self, "confirmed"):
+            return data
+
+        # check if user already exist, ask them if they want to use that user or create a new user
+        exist = User.objects.filter(first_name=data['first_name'], last_name=data['last_name']).exists()
+        self.confirmed = True
+        if exist and data['new_user']:
+            raise ValidationError("User already exists. please check name spelling. submit again to use this user")
+        elif not exist and not data['new_user']:
+            raise ValidationError("User does not exist. please check name spelling. submit again to create this user")
+        
+        return data   
+
     def save(self, commit=True):
         data = self.cleaned_data
         prof, _ = User.objects.update_or_create(

@@ -1,3 +1,4 @@
+import random
 from django.db import models
 from django.db.models import Q
 from django.core.exceptions import ValidationError
@@ -34,12 +35,19 @@ class User(AbstractUser):
         if self.is_superuser:
             return super().save(*args, **kwargs)
 
-        self.username = self.first_name + self.last_name
-
         creation = not self.pk
         if creation:
             self.set_unusable_password()
         
+        # check if user exist or not and make the username unique
+        self.username = self.first_name + self.last_name
+        if creation:
+            if User.objects.filter(username=self.username).exists():
+                self.username += str(random.randint(0, 10))
+        else:
+            if User.objects.filter(username=self.username).exclude(pk=self.pk).exists():
+                self.username += str(random.randint(0, 10))
+
         # ensures that we can have the same blank email and phone number
         if self.email == '':
             self.email = None

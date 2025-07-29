@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from braces.forms import UserKwargModelFormMixin
 from apps.organization.models import Program, Faculty
 from .models import User, Student
@@ -44,13 +45,33 @@ class StudentForm(forms.ModelForm):
     last_name = forms.CharField()
     email = forms.EmailField(required=False)
     phone_number = forms.CharField(required=False)
+    new_user = forms.BooleanField(required=False, initial=True)
     
     class Meta:
         model = Student
         fields = ['_class']
     
+    def clean(self):
+        """
+        this is to ensure the user does not typo name and to confirm their intention
+        """
+        data = super().clean()
+        # check if user acknowledged and submit again
+        if hasattr(self, "confirmed"):
+            return data
+
+        # check if user already exist, ask them if they want to use that user or create a new user
+        exist = User.objects.filter(first_name=data['first_name'], last_name=data['last_name']).exists()
+        self.confirmed = True
+        if exist and data['new_user']:
+            raise ValidationError("User already exists. please check name spelling. submit again to use this user")
+        elif not exist and not data['new_user']:
+            raise ValidationError("User does not exist. please check name spelling. submit again to create this user")
+        
+        return data            
+    
     def save(self, commit=True):
-        data = self.cleaned_data
+        data = self.cleaned_data        
         user_data = {
             'first_name': data['first_name'],
             'last_name': data['last_name'],

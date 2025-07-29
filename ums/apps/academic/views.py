@@ -48,6 +48,7 @@ class ScheduleUpdateView(ScheduleCreateView, BaseUpdateView):
         initial.update({
             'first_name': prof.first_name,
             'last_name': prof.last_name,
+            'new_user': False,
         })
         return initial
 
