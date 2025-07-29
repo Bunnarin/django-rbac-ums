@@ -46,6 +46,7 @@ class StudentForm(forms.ModelForm):
     email = forms.EmailField(required=False)
     phone_number = forms.CharField(required=False)
     new_user = forms.BooleanField(required=False, initial=True)
+    selected_user = forms.ChoiceField(required=False, disabled=True)
     
     class Meta:
         model = Student
@@ -56,32 +57,27 @@ class StudentForm(forms.ModelForm):
         this is to ensure the user does not typo name and to confirm their intention
         """
         data = super().clean()
-        # check if user acknowledged and submit again
-        if hasattr(self, "confirmed"):
-            return data
-
-        # check if user already exist, ask them if they want to use that user or create a new user
         exist = User.objects.filter(first_name=data['first_name'], last_name=data['last_name']).exists()
-        self.confirmed = True
         if exist and data['new_user']:
-            raise ValidationError("User already exists. please check name spelling. submit again to use this user")
+            duplicated_users = User.objects.filter(first_name=data['first_name'], last_name=data['last_name'])
+            self.fields['selected_user'].choices = [(user.id, f"{user.email} {user.phone_number}") for user in duplicated_users]
+            self.fields['selected_user'].disabled = False
+            raise ValidationError({"new_user": "User already exists. please check name spelling OR uncheck THIS and select an existing user instead"})
         elif not exist and not data['new_user']:
-            raise ValidationError("User does not exist. please check name spelling. submit again to create this user")
+            raise ValidationError({"new_user": "User does not exist. please check name spelling OR check THIS to create this user instead"})
         
-        return data            
-    
+        return data        
+
     def save(self, commit=True):
-        data = self.cleaned_data        
-        user_data = {
-            'first_name': data['first_name'],
-            'last_name': data['last_name'],
-            'defaults': {}
-        }
-        if data['email'] != "":
-            user_data['defaults']['email'] = data['email']
-        if data['phone_number'] != "":
-            user_data['defaults']['phone_number'] = data['phone_number']
-        user, _ = User.objects.update_or_create(**user_data)
+        data = self.cleaned_data
+        if data['new_user']:
+            user = User.objects.create(first_name=data['first_name'], last_name=data['last_name'])
+        else:
+            user = User.objects.get(pk=data['selected_user'])
+
+        user.email = data['email']
+        user.phone_number = data['phone_number']
+        user.save()
 
         student = super().save(commit=False)
         student.user = user
