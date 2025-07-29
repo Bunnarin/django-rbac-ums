@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     # extensions
     'django_jsonform',
     'crispy_forms',
-    'crispy_bootstrap5',
+    'crispy_bootstrap4',
     'bulk_update_or_create',
     # custom apps
     'apps.core',
@@ -135,7 +135,7 @@ STATICFILES_DIRS = [PROJECT_DIR / 'static'] # no idea why this is like this
 
 
 # Crispy forms configuration
-CRISPY_TEMPLATE_PACK = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap4"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

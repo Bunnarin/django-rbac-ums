@@ -14,11 +14,13 @@ urlpatterns = [
     path('classes/create/', views.ClassCreateView.as_view(), name='add_class'),
     path('classes/change/<int:pk>/', views.ClassUpdateView.as_view(), name='change_class'),
     path('classes/delete/<int:pk>/', views.ClassDeleteView.as_view(), name='delete_class'),
-    # course assignment
+    # schedule
     path('schedules/', views.ScheduleListView.as_view(), name='view_schedule'),
+    path('schedules/import/', views.ScheduleImportView.as_view(), name='import_schedule'),
     path('schedules/create/', views.ScheduleCreateView.as_view(), name='add_schedule'),
     path('schedules/change/<int:pk>/', views.ScheduleUpdateView.as_view(), name='change_schedule'),
     path('schedules/delete/<int:pk>/', views.ScheduleDeleteView.as_view(), name='delete_schedule'),
+    path('schedules/delete/', views.ScheduleBulkDeleteView.as_view(), name='bulk_delete_schedule'),
     # score
     path('scores/<int:student_pk>/', views.ScoreStudentListView.as_view(), name='view_score'),
     path('scores/add/<int:schedule_pk>/', views.ScoreScheduleEditView.as_view(), name='add_score'),

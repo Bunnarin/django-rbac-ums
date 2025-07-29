@@ -1,7 +1,25 @@
-from django import forms
-from django_jsonform.widgets import JSONFormWidget
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Layout, Div, Field
 
-def translate_json_to_schema(template_json):
+def get_grid_form(model_form_class):
+    class GridForm(model_form_class):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.helper = FormHelper()
+            self.helper.form_tag = False
+            
+            # Create a single row with all fields inline
+            self.helper.layout = Layout(
+                Div(
+                    *[Field(field_name, wrapper_class='form-group') 
+                      for field_name in self.fields],
+                    css_class='d-flex flex-nowrap'
+                )
+            )
+            
+    return GridForm
+
+def json_to_schema(template_json):
     schema = {
         "type": "object",
         "keys": {}
@@ -34,15 +52,3 @@ def translate_json_to_schema(template_json):
                     "widget": "multiselect"
                 }
     return schema
-
-def get_json_form(template_json, model, fields, json_field):
-    class JsonForm(forms.ModelForm):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.fields[json_field].widget = JSONFormWidget(
-                schema=translate_json_to_schema(template_json)
-            )
-    
-    MetaClass = type('Meta', (), {'model': model, 'fields': fields})
-    JsonFormClass = type('JsonForm', (JsonForm,), {'Meta': MetaClass})
-    return JsonFormClass

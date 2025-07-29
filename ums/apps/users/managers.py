@@ -10,20 +10,20 @@ class UserRLSManager(RLSManager, UserManager):
         queryset = super(UserManager, self).get_queryset()
         user = request.user
 
-        faculty_id = request.session.get('selected_faculty')
-        program_id = request.session.get('selected_program')
-
         if user.has_perm('users.access_global') or \
             user.has_perm('users.access_faculty_wide') or \
             user.has_perm('users.access_program_wide'):
             
+            faculty_id = request.session.get('selected_faculty')
+            program_id = request.session.get('selected_program')
+            
             if faculty_id != "None":
-                queryset = queryset.filter(faculties__pk=faculty_id)
+                queryset = queryset.filter(faculties=faculty_id)
             else:
                 queryset = queryset.filter(faculties__isnull=True)
 
             if program_id != "None":
-                queryset = queryset.filter(programs__pk=program_id)
+                queryset = queryset.filter(programs=program_id)
             else:
                 queryset = queryset.filter(programs__isnull=True)
 

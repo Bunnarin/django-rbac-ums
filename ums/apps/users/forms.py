@@ -24,10 +24,11 @@ class UserForm(UserKwargModelFormMixin, forms.ModelForm):
             # no modification
             pass
         elif self.user.has_perm('users.access_faculty_wide'):
+            self.fields['faculties'].queryset = self.user.faculties
             self.fields['programs'].queryset = Program.objects.filter(faculty=self.user.faculties)
         else:
+            self.fields['faculties'].queryset = self.user.faculties
             self.fields['programs'].queryset = self.user.programs
-        self.fields['faculties'].queryset = self.user.faculties
     
     def clean(self):
         cleaned_data = super().clean()

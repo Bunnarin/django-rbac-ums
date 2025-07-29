@@ -1,7 +1,9 @@
 from django.views.generic import ListView
+from apps.core.forms import json_to_schema
+from django.forms.models import modelform_factory
 from apps.core.views import BaseDeleteView, BaseListView, BaseCreateView, BaseUpdateView, BaseBulkDeleteView
 from .models import Activity, ActivityTemplate
-from apps.core.forms import get_json_form
+from apps.core.forms import json_to_schema
 
 class ActivityListView(BaseListView):
     """
@@ -9,8 +11,9 @@ class ActivityListView(BaseListView):
     """
     model = Activity
     table_fields = ['author', 'template', 'created_at', 'response']
-    object_actions = [('🗑️', 'activities:delete_activity')]
-    actions = [('+', 'activities:add_activity'), ('clear all', 'activities:delete_activity')]
+    object_actions = [('🗑️', 'activities:delete_activity', None)]
+    actions = [('+', 'activities:add_activity', None),
+    ('clear all', 'activities:delete_activity', None)]
 
 class ActivityTemplateSelectView(ListView):
     """
@@ -32,7 +35,7 @@ class ActivityCreateView(BaseCreateView):
     def get_form(self):
         self.template = ActivityTemplate.objects.get(pk=self.kwargs['template_pk'])
         template_json = self.template.template_definition
-        Form = get_json_form(template_json, Activity, ['response'], 'response')
+        Form = modelform_factory(Activity, fields=['response'], widgets={'response': JSONFormWidget(schema=json_to_schema(template_json))})
         return super().get_form(form_class=Form)
 
     def form_valid(self, form):

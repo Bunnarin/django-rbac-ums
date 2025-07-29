@@ -1,19 +1,20 @@
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic import FormView
-from django.db import transaction
 from django.urls import reverse_lazy
 from django.core.exceptions import ValidationError
-from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseBulkDeleteView
-from apps.core.forms import get_json_form
+from django.forms.models import modelform_factory
+from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseBulkDeleteView, BaseImportView
+from apps.core.forms import json_to_schema
 from apps.users.models import Student
 from .models import Course, Class, Schedule, Score, Evaluation, EvalationTemplate
-from .forms import create_score_form_class, ScheduleForm
+from .forms import ScoreBulkCreateForm, ScheduleForm
 
 class CourseListView(BaseListView):
     model = Course
     table_fields = ['name', 'year']
-    object_actions = [('✏️', 'academic:change_course'), ('🗑️', 'academic:delete_course')]
-    actions = [('+', 'academic:add_course')]
+    object_actions = [('✏️', 'academic:change_course', None), 
+    ('🗑️', 'academic:delete_course', None)]
+    actions = [('+', 'academic:add_course', None)]
 
 class CourseCreateView(BaseCreateView):
     model = Course
@@ -26,12 +27,17 @@ class CourseDeleteView(BaseDeleteView):
 
 class ScheduleListView(BaseListView):
     model = Schedule
-    object_actions = [('score', 'academic:add_score'),
-               ('evaluation', 'academic:add_evaluation'),
-               ('✏️', 'academic:change_schedule'),
-               ('🗑️', 'academic:delete_schedule')]
-    actions = [('+', 'academic:add_schedule')]
+    object_actions = [('score', 'academic:add_score', None),
+               ('evaluation', 'academic:add_evaluation', None),
+               ('✏️', 'academic:change_schedule', None),
+               ('🗑️', 'academic:delete_schedule', None)]
+    actions = [('+', 'academic:add_schedule', None),
+    ('clear all', 'academic:bulk_delete_schedule', 'academic.delete_schedule'),
+    ('import', 'academic:import_schedule', 'academic.add_schedule')]
     table_fields = ['professor', 'course', 'course.year', '_class']
+
+class ScheduleImportView(BaseImportView):
+    model = Schedule
 
 class ScheduleCreateView(BaseCreateView):
     model = Schedule
@@ -55,11 +61,14 @@ class ScheduleUpdateView(ScheduleCreateView, BaseUpdateView):
 class ScheduleDeleteView(BaseDeleteView):
     model = Schedule
 
+class ScheduleBulkDeleteView(BaseBulkDeleteView):
+    model = Schedule
+
 class ClassListView(BaseListView):
     model = Class
-    object_actions = [('✏️', 'academic:change_class'),
-               ('🗑️', 'academic:delete_class')]
-    actions = [('+', 'academic:add_class')]
+    object_actions = [('✏️', 'academic:change_class', None),
+               ('🗑️', 'academic:delete_class', None)]
+    actions = [('+', 'academic:add_class', None)]
     table_fields = ['generation', 'name']
 
 class ClassCreateView(BaseCreateView):
@@ -85,44 +94,55 @@ class ScoreScheduleEditView(PermissionRequiredMixin, FormView):
     template_name = 'core/generic_form.html'
     permission_required = 'academic.add_score'
     success_url = reverse_lazy('academic:view_schedule')
-
     def get_form(self):
-        self.schedule = Schedule.objects.select_related(
+        schedule = Schedule.objects.select_related(
             'course', '_class').get(pk=self.kwargs['schedule_pk'])
-        self.students = self.schedule._class.students.all()
-        self.existing_scores = {
+        students = schedule._class.students.all()
+        existing_scores = {
             score.student_id: score 
             for score in Score.objects.filter(
-                student__in=self.students, course=self.schedule.course
+                student__in=students, course=schedule.course
                 )
         }
-        Form = create_score_form_class(self.students)
-        return Form(self.request.POST or None, existing_scores=self.existing_scores)
+        return ScoreBulkCreateForm(students=students, existing_scores=existing_scores, schedule=schedule)
+
+    # def get_form(self):
+    #     self.schedule = Schedule.objects.select_related(
+    #         'course', '_class').get(pk=self.kwargs['schedule_pk'])
+    #     self.students = self.schedule._class.students.all()
+    #     self.existing_scores = {
+    #         score.student_id: score 
+    #         for score in Score.objects.filter(
+    #             student__in=self.students, course=self.schedule.course
+    #             )
+    #     }
+    #     Form = create_score_form_class(self.students)
+    #     return Form(self.request.POST or None, existing_scores=self.existing_scores)
     
-    @transaction.atomic
-    def form_valid(self, form):
-        if form.is_valid():
-            score_objects = []
-            for student in self.students:
-                score_value = form.cleaned_data.get(f'score_{student.id}')
-                # Only process if score is different from inital value
-                if score_value == self.existing_scores.get(student.id):
-                    continue
-                score_objects.append(
-                    Score(
-                        student=student,
-                        course=self.schedule.course,
-                        score=score_value
-                    )
-                )            
-            # Use bulk_update_or_create to handle both create and update
-            if score_objects:
-                Score.objects.bulk_update_or_create(
-                    score_objects,
-                    ['score'],  # Fields to update
-                    match_field='student'  # Field to match on for updates
-                )
-        return super().form_valid(form)
+    # @transaction.atomic
+    # def form_valid(self, form):
+    #     if form.is_valid():
+    #         score_objects = []
+    #         for student in self.students:
+    #             score_value = form.cleaned_data.get(f'score_{student.id}')
+    #             # Only process if score is different from inital value
+    #             if score_value == self.existing_scores.get(student.id):
+    #                 continue
+    #             score_objects.append(
+    #                 Score(
+    #                     student=student,
+    #                     course=self.schedule.course,
+    #                     score=score_value
+    #                 )
+    #             )            
+    #         # Use bulk_update_or_create to handle both create and update
+    #         if score_objects:
+    #             Score.objects.bulk_update_or_create(
+    #                 score_objects,
+    #                 ['score'],  # Fields to update
+    #                 match_field='student'  # Field to match on for updates
+    #             )
+    #     return super().form_valid(form)
 
 class EvaluationListView(BaseListView):
     model = Evaluation
@@ -145,7 +165,7 @@ class EvaluationCreateView(PermissionRequiredMixin, FormView):
 
     def get_form(self):
         question_definition = EvalationTemplate.objects.get().question_definition
-        Form = get_json_form(question_definition, Evaluation, ['response'], 'response')
+        Form = modelform_factory(Evaluation, fields=['response'], widgets={'response': JSONFormWidget(schema=json_to_schema(question_definition))})
         return super().get_form(form_class=Form)
     
     def form_valid(self, form):

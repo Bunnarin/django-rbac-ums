@@ -10,7 +10,7 @@ admin.site.unregister(EmailAddress)
 # allow only editing in the user admin
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    fields = ['username']
+    # fields = ['username']
     def get_add_permission(self, request):
         return False
     def get_delete_permission(self, request):
