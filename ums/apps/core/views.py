@@ -12,7 +12,6 @@ from django.shortcuts import redirect, render
 from apps.organization.models import Faculty, Program
 from apps.users.managers import UserRLSManager
 from .managers import RLSManager
-from .forms import get_grid_form
 
 class BaseListView(PermissionRequiredMixin, ListView):
     """
@@ -125,8 +124,8 @@ class BaseWriteView(PermissionRequiredMixin):
         # filter the field if it has affiliation
         for related_field in [r for r in form.fields if r.endswith("_id")]:
             related_model = self.model._meta.get_field(related_field).related_model
-            if issubclass(self.model.objects.__class__, RLSManager) or \
-                issubclass(self.model.objects.__class__, UserRLSManager):
+            if issubclass(related_model.objects.__class__, RLSManager) or \
+                issubclass(related_model.objects.__class__, UserRLSManager):
                 form.fields[related_field].queryset = related_model.objects.get_queryset(request=self.request)
         return form
     
@@ -218,6 +217,7 @@ class BaseImportView(BaseCreateView):
     template_name = 'core/generic_form.html'
     fields = '__all__'
     form_class = None
+    save_before_create = False
 
     def get_permission_required(self):
         self.app_label = self.model._meta.app_label
@@ -244,10 +244,8 @@ class BaseImportView(BaseCreateView):
     @transaction.atomic
     def post(self, request, *args, **kwargs):
         FormSet_Class = formset_factory(
-            get_grid_form(
-                self.form_class or modelform_factory(self.model, fields=self.fields)
-            ),
-            extra=0
+            self.form_class or modelform_factory(self.model, fields=self.fields),
+            extra=1
         )
         if 'form-TOTAL_FORMS' not in request.POST:
             form = self._get_default_form(request.POST)
@@ -280,7 +278,10 @@ class BaseImportView(BaseCreateView):
             instances = []
             if formset.is_valid():
                 for form in formset:
-                    instances.append(form.save(commit=False))
+                    instance = form.save(commit=False)
+                    if self.save_before_create:
+                        instance.save(commit=False)
+                    instances.append(instance)
                 self.model.objects.bulk_create(instances)
             
         return redirect(f'{self.app_label}:view_{self.model_name}')
@@ -348,5 +349,4 @@ def set_group(request):
             return JsonResponse({'error': 'Unauthorized group'}, status=403)
         s['selected_group'] = group_id
         s['permissions'] = list(Group.objects.get(id=group_id).permissions.all().values_list('codename', flat=True))
-    print(s['permissions'])
     return redirect(request.META.get('HTTP_REFERER', '/'))

@@ -68,7 +68,6 @@ class StudentForm(forms.ModelForm):
             raise ValidationError({"new_user": "User already exists. please check name spelling OR uncheck THIS and select an existing user instead"})
         elif not exist and not data['new_user']:
             raise ValidationError({"new_user": "User does not exist. please check name spelling OR check THIS to create this user instead"})
-        
         return data        
 
     def save(self, commit=True):

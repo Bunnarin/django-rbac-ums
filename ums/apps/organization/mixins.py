@@ -19,6 +19,8 @@ class OrganizationMixin(models.Model):
 
     def clean(self):
         super().clean()
+        if not hasattr(self, 'program') or not hasattr(self, 'faculty'):
+            return
         if self.faculty != self.program.faculty:
             raise ValidationError(
                 {'program': 'The selected program does not belong to the assigned faculty.'}
@@ -47,7 +49,9 @@ class OrganizationNullMixin(models.Model):
 
     def clean(self):
         super().clean()
-        if self.program and self.faculty and self.faculty != self.program.faculty:
+        if not hasattr(self, 'program') or not hasattr(self, 'faculty'):
+            return
+        if self.faculty != self.program.faculty:
             raise ValidationError({
                 'program': 'The selected program does not belong to the assigned faculty.'
                 })
@@ -76,7 +80,9 @@ class ProgramNullMixin(models.Model):
 
     def clean(self):
         super().clean()
-        if self.program and self.faculty != self.program.faculty:
+        if not hasattr(self, 'program') or not hasattr(self, 'faculty'):
+            return
+        if self.faculty != self.program.faculty:
             raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
 
     def save(self, *args, **kwargs):

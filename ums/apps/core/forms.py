@@ -1,25 +1,8 @@
+from django.forms import ModelChoiceField
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Div, Field
-
-def get_grid_form(model_form_class):
-    class GridForm(model_form_class):
-        def __init__(self, *args, **kwargs):
-            request = kwargs.pop('request', None)
-            print(request)
-            super().__init__(*args, **kwargs)
-            self.helper = FormHelper()
-            self.helper.form_tag = False
-            
-            # Create a single row with all fields inline
-            self.helper.layout = Layout(
-                Div(
-                    *[Field(field_name, wrapper_class='form-group') 
-                      for field_name in self.fields],
-                    css_class='d-flex flex-nowrap'
-                )
-            )
-            
-    return GridForm
+from apps.core.managers import RLSManager
+from apps.users.managers import UserRLSManager
 
 def json_to_schema(template_json):
     schema = {

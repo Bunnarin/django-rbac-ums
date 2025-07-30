@@ -61,7 +61,7 @@ class RLSManager(models.Manager):
                 filters[f"{self.field_with_affiliation}program"] = program_id
             else:
                 filters[f"{self.field_with_affiliation}program__isnull"] = True
-
+            
             return queryset.filter(**filters)
 
         else:

@@ -55,22 +55,38 @@
         </div>
         <div class="card-body">
             <form method="post" class="mb-4">
+                {% csrf_token %}
                 {% if form %}
-                    {% csrf_token %}
                     {{ form.media }}
                     {{ form|crispy }}
-                {% elif formset %}
-                    <div class="form-scroll-container">
-                        {{ formset.media }}
-                        {{ formset.management_form }}
-                        {% for form in formset %}
-                            {% crispy form form.helper %}
-                        {% endfor %}
-                    </div>
                 {% endif %}
+
+                {% if formset %}
+                    <strong>{{ formset.prefix }}</strong>
+                    {{ formset.management_form }}
+                    {{ formset.media }}
+                <table>
+                    {% for form in formset %}
+                        {% if forloop.first %}
+                        <tr>
+                            {% for field in form.visible_fields %}
+                                <td>{{ field.label }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endif %}
+                        
+                        <tr class="formset_row">
+                        {% for field in form.visible_fields %}
+                            <td>{{ field }}</td>
+                        {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </table>
+                {% endif %}
+                <br>
                 <button type="submit" class="btn btn-primary">Submit</button>
+                <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
             </form>
-            <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
         </div>
     </div>
 {% endblock %}
@@ -93,6 +109,15 @@
                 width: '100%'
             });
         });
+    });
+</script>
+
+<!-- for inline formset -->
+<script src="{% static 'formset/jquery.formset.js' %}"></script>
+<script type="text/javascript">
+    $('.formset_row').formset({
+        prefix: '{{ formset.prefix }}',
+        deleteText: '❌', 
     });
 </script>
 {% endblock %}

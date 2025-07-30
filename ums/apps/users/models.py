@@ -34,7 +34,6 @@ class User(AbstractUser):
         """
         if self.is_superuser:
             return
-
         creation = not self.pk
         if creation:
             self.set_unusable_password()
@@ -66,6 +65,10 @@ class User(AbstractUser):
             self.groups.add(professor_group)
         elif not creation:
             self.groups.remove(professor_group)
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        return super().save(*args, **kwargs)
         
     class Meta:
         verbose_name = "User"
@@ -88,8 +91,15 @@ class Student(models.Model):
         return self.user.__str__()
     
     def clean(self):
-        student_group, _ = Group.objects.get_or_create(name="STUDENT")
-        self.user.groups.add(student_group)
+        if hasattr(self, 'user'):
+            student_group, _ = Group.objects.get_or_create(name="STUDENT")
+            self.user.groups.add(student_group)
+    
+    def save(self, *args, **kwargs):
+        commit = kwargs.pop('commit', None)
+        self.clean()
+        if commit:
+            super().save()
     
     def delete(self, *args, **kwargs):
         # remove the user from the student grp

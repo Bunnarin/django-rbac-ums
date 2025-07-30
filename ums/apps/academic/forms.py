@@ -1,7 +1,7 @@
 from django import forms
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from apps.academic.models import Score, Schedule
+from apps.academic.models import Score, Schedule, Class
 from apps.users.models import User
 
 class ScoreBulkCreateForm(forms.ModelForm):

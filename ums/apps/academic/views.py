@@ -1,13 +1,15 @@
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic import FormView
 from django.urls import reverse_lazy
+from django.db import transaction
 from django.core.exceptions import ValidationError
-from django.forms.models import modelform_factory
+from django.forms.models import modelform_factory, inlineformset_factory
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseBulkDeleteView, BaseImportView
 from apps.core.forms import json_to_schema
+from apps.organization.models import Faculty, Program
 from apps.users.models import Student
 from .models import Course, Class, Schedule, Score, Evaluation, EvalationTemplate
-from .forms import ScoreBulkCreateForm, ScheduleForm
+from .forms import ScoreBulkCreateForm
 
 class CourseListView(BaseListView):
     model = Course
@@ -28,57 +30,8 @@ class CourseDeleteView(BaseDeleteView):
 class ScheduleListView(BaseListView):
     model = Schedule
     object_actions = [('score', 'academic:add_score', None),
-               ('evaluation', 'academic:add_evaluation', None),
-               ('✏️', 'academic:change_schedule', None),
-               ('🗑️', 'academic:delete_schedule', None)]
-    actions = [('+', 'academic:add_schedule', None),
-    ('clear all', 'academic:bulk_delete_schedule', 'academic.delete_schedule'),
-    ('import', 'academic:import_schedule', 'academic.add_schedule')]
+               ('evaluation', 'academic:add_evaluation', None)]
     table_fields = ['professor', 'course', 'course.year', '_class']
-
-class ScheduleImportView(BaseImportView):
-    model = Schedule
-
-class ScheduleCreateView(BaseCreateView):
-    model = Schedule
-    form_class = ScheduleForm
-    
-class ScheduleUpdateView(ScheduleCreateView, BaseUpdateView):
-    """
-    View for updating schedules with dynamic timeframe builder.
-    """
-    def get_initial(self):
-        initial = super().get_initial()
-        student = self.get_object()
-        prof = student.professor
-        initial.update({
-            'first_name': prof.first_name,
-            'last_name': prof.last_name,
-            'new_user': False,
-        })
-        return initial
-
-class ScheduleDeleteView(BaseDeleteView):
-    model = Schedule
-
-class ScheduleBulkDeleteView(BaseBulkDeleteView):
-    model = Schedule
-
-class ClassListView(BaseListView):
-    model = Class
-    object_actions = [('✏️', 'academic:change_class', None),
-               ('🗑️', 'academic:delete_class', None)]
-    actions = [('+', 'academic:add_class', None)]
-    table_fields = ['generation', 'name']
-
-class ClassCreateView(BaseCreateView):
-    model = Class
-
-class ClassUpdateView(BaseUpdateView):
-    model = Class
-
-class ClassDeleteView(BaseDeleteView):
-    model = Class
 
 class ScoreStudentListView(BaseListView):
     model = Score
@@ -183,3 +136,49 @@ class EvaluationBulkDeleteView(BaseBulkDeleteView):
     delete everything
     """
     model = Evaluation
+
+class ClassListView(BaseListView):
+    model = Class
+    object_actions = [('✏️', 'academic:change_class', None),
+               ('🗑️', 'academic:delete_class', None)]
+    actions = [('+', 'academic:add_class', None)]
+    table_fields = ['generation', 'name']
+
+class ClassDeleteView(BaseDeleteView):
+    model = Class
+
+class ClassCreateView(BaseCreateView):
+    model = Class
+    fields = '__all__'
+    success_url = reverse_lazy('academic:class_list')
+
+    def get_context_data(self, **kwargs):
+        data = super().get_context_data(**kwargs)
+        data['formset'] = inlineformset_factory(Class, Schedule, extra=1, can_delete=True, form=modelform_factory(
+            Schedule, fields='__all__'))(self.request.POST or None)
+        return data
+
+    @transaction.atomic
+    def form_valid(self, form):
+        context = self.get_context_data()
+        formset = context['formset']
+        s = self.request.session
+        form.instance.faculty = Faculty.objects.get(pk=s['selected_faculty'])
+        form.instance.program = Program.objects.get(pk=s['selected_program'])
+        if form.is_valid() and formset.is_valid():
+            formset.instance = form.save()
+            instances = formset.save(commit=False)
+            # Delete objects marked for deletion
+            for obj in formset.deleted_objects:
+                obj.delete()
+            # Save the new/updated instances
+            for instance in instances:
+                instance.save()
+            return super().form_valid(form)
+
+class ClassUpdateView(ClassCreateView, BaseUpdateView):
+    def get_context_data(self, **kwargs):
+        data = super(BaseUpdateView, self).get_context_data(**kwargs)
+        data['formset'] = inlineformset_factory(Class, Schedule, extra=1, can_delete=True, form=modelform_factory(
+            Schedule, fields='__all__'))(self.request.POST or None, instance=self.object)
+        return data

@@ -46,13 +46,13 @@ class StudentListView(BaseListView):
         ('score', 'academic:view_score', None)
     ]
     actions = [('+', 'users:add_student', None),
-               ('import', 'users:import_student', 'users.add_student')]
+               ('import', 'users:import_student', 'add_student')]
 
 class StudentImportView(BaseImportView):
     model = Student
     form_class = StudentForm
+    save_before_create = True
     
-
 class StudentCreateView(BaseCreateView):
     model = Student
     form_class = StudentForm
