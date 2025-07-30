@@ -5,10 +5,9 @@ from bulk_update_or_create import BulkUpdateOrCreateQuerySet
 from django_jsonform.models.fields import JSONField
 from apps.organization.mixins import OrganizationMixin
 from apps.users.models import User, Student
-from apps.core.mixins import DetailMixin
 from apps.core.managers import RLSManager
 
-class Course(DetailMixin, OrganizationMixin):
+class Course(OrganizationMixin):
     name = models.CharField(max_length=255)
     year = models.CharField(max_length=1)
 
@@ -21,7 +20,7 @@ class Course(DetailMixin, OrganizationMixin):
     def get_user_rls_filter(self, user):
         return Q(False)
 
-class Class(DetailMixin, OrganizationMixin):
+class Class(OrganizationMixin):
     generation = models.IntegerField()
     name = models.CharField(max_length=255)
 
@@ -36,7 +35,7 @@ class Class(DetailMixin, OrganizationMixin):
         # the class one is teaching or the class one is a student in
         return Q(students__user=user) | Q(schedule__professor=user)
 
-class Schedule(DetailMixin, models.Model):
+class Schedule(models.Model):
     """
     Stores the schedule for a professor for a course for a class
     """
@@ -62,28 +61,10 @@ class Schedule(DetailMixin, models.Model):
     class Meta:
         unique_together = ('professor', 'course', '_class')
     
-    def save(self, *args, **kwargs):
-        """
-        ensures that the the user added gets added to the ALL PROFESSOR GROUP
-        also ensures that the course and the class affiliation match
-        """
-        # check if the course and the class affiliation match
+    def clean(self):
         if self.course.faculty != self._class.faculty or self.course.program != self._class.program:
             raise ValidationError("Course and class affiliation do not match")
-            
-        creation = not self.pk
-        if not creation:
-            # check if the user changed
-            old_prof = Schedule.objects.get(pk=self.pk).professor
-            if old_prof != self.professor:
-                # check if the user has any other schedule, if no, remove their prof status
-                if not Schedule.objects.filter(professor=old_prof).exclude(pk=self.pk).exists():
-                    old_prof.is_professor = False
-                    old_prof.save()
-        self.professor.is_professor = True
-        self.professor.save()
-        super().save(*args, **kwargs)
-
+    
 class Score(models.Model):
     student = models.ForeignKey(Student, on_delete=models.PROTECT)
     course = models.ForeignKey(Course, on_delete=models.PROTECT)

@@ -1,34 +1,36 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from braces.forms import UserKwargModelFormMixin
 from apps.organization.models import Program, Faculty
 from .models import User, Student
 
-class UserForm(UserKwargModelFormMixin, forms.ModelForm):
+class UserForm(forms.ModelForm):
     """
     Filter the user permissions based on user's own permission set.
     the mixin automate the popping of the user from the kwargs recieved from the other view that passed it
     """
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs', 'is_staff', 'groups']
+        fields = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs', 'groups']
     
     def __init__(self, *args, **kwargs):
+        request = kwargs.pop('request', None)
+        user = request.user
+        s = request.session
         super().__init__(*args, **kwargs)
 
         # filter permissions
-        self.fields['groups'].queryset = self.user.groups
+        self.fields['groups'].queryset = user.groups
 
         # filter affiliations
-        if self.user.has_perm('users.access_global'):
+        if 'access_global' in s['permissions']:
             # no modification
             pass
-        elif self.user.has_perm('users.access_faculty_wide'):
-            self.fields['faculties'].queryset = self.user.faculties
-            self.fields['programs'].queryset = Program.objects.filter(faculty=self.user.faculties)
+        elif 'access_faculty_wide' in s['permissions']:
+            self.fields['faculties'].queryset = user.faculties
+            self.fields['programs'].queryset = Program.objects.filter(faculty__in=user.faculties)
         else:
-            self.fields['faculties'].queryset = self.user.faculties
-            self.fields['programs'].queryset = self.user.programs
+            self.fields['faculties'].queryset = user.faculties
+            self.fields['programs'].queryset = user.programs
     
     def clean(self):
         cleaned_data = super().clean()

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
 from allauth.account.models import EmailAddress
-from .models import Student, User
+from .models import User
 
 # Unregister default allauth email admin since we don't need it
 admin.site.unregister(EmailAddress)
@@ -10,14 +10,11 @@ admin.site.unregister(EmailAddress)
 # allow only editing in the user admin
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    # fields = ['username']
+    fields = ['is_active', 'is_staff']
     def get_add_permission(self, request):
         return False
     def get_delete_permission(self, request):
         return False
-
-# when you need to bypass the default behaviour of the student and prof form
-admin.site.register(Student)
 
 admin.site.unregister(Group)
 @admin.register(Group)
@@ -51,7 +48,7 @@ class CustomGroupAdmin(admin.ModelAdmin):
                     Q(codename="access_program_wide")
                 ).distinct()
 
-                if user.has_perm("users.access_global") or user.has_perm("users.access_faculty_wide"):
+                if any(perm for perm in request.session['permissions'] if perm in ["access_global", "access_faculty_wide"]):
                     allowed_permissions_qs = (allowed_permissions_qs | extended_permissions_qs).distinct()
 
                 kwargs["queryset"] = allowed_permissions_qs.select_related("content_type")

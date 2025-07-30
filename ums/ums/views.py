@@ -32,19 +32,12 @@ def home_view(request):
             verbose_name_plural = model_class._meta.verbose_name_plural or f"{model_name}s"
             verbose_name_plural = verbose_name_plural.title()
 
-            rud_perms = [
-                f'{app_label}.change_{model_name}',
-                f'{app_label}.delete_{model_name}',
-                f'{app_label}.view_{model_name}',
-            ]
             has_rud_access = False
-            for perm in rud_perms:
-                if user.has_perm(perm):
-                    has_rud_access = True
-                    break
+            if any(perm in request.session['permissions'] for perm in [f'change_{model_name}', f'delete_{model_name}', f'view_{model_name}']):
+                has_rud_access = True
 
             has_add_access = False
-            if user.has_perm(f'{app_label}.add_{model_name}'):
+            if f'add_{model_name}' in request.session['permissions']:
                 has_add_access = True
 
             # Initialize app section if it doesn't exist

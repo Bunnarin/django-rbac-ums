@@ -4,11 +4,13 @@ from django.urls import reverse_lazy
 from django.db import transaction
 from django.http import JsonResponse
 from django.views.generic import View, ListView, DeleteView, CreateView, UpdateView
+from django.contrib.auth.models import Group
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.decorators.http import require_POST
 from django.forms.models import modelform_factory
 from django.shortcuts import redirect, render
 from apps.organization.models import Faculty, Program
+from apps.users.managers import UserRLSManager
 from .managers import RLSManager
 from .forms import get_grid_form
 
@@ -25,9 +27,8 @@ class BaseListView(PermissionRequiredMixin, ListView):
     def get_permission_required(self):
         self.app_label = self.model._meta.app_label
         self.model_name = self.model._meta.model_name.lower()
-        user = self.request.user
         for action in ["view", "change", "delete"]:
-            if user.has_perm(f'{self.app_label}.{action}_{self.model_name}'):
+            if f"{action}_{self.model_name}" in self.request.session['permissions']:
                 return [f'{self.app_label}.{action}_{self.model_name}']
         return [f'{self.app_label}.view_{self.model_name}']
 
@@ -42,22 +43,23 @@ class BaseListView(PermissionRequiredMixin, ListView):
         context["object_actions"] = {}
         for action, url, permission in self.object_actions:
             if not permission:
-                permission = url.replace(':', '.')
-            if user.has_perm(permission):
+                _, permission = url.split(':')
+            if permission in self.request.session['permissions']:
                 context["object_actions"][action] = url
         
         context["actions"] = {}
         for action, url, permission in self.actions:
             if not permission:
-                permission = url.replace(':', '.')
-            if user.has_perm(permission):
+                _, permission = url.split(':')
+            if permission in self.request.session['permissions']:
                 context["actions"][action] = url
 
         return context
         
     def get_queryset(self):
         # filter RLS sin
-        if issubclass(self.model.objects.__class__, RLSManager):
+        if issubclass(self.model.objects.__class__, RLSManager) or \
+            issubclass(self.model.objects.__class__, UserRLSManager):
             queryset = self.model.objects.get_queryset(request=self.request)
         else:
             queryset = super().get_queryset()
@@ -103,7 +105,8 @@ class BaseWriteView(PermissionRequiredMixin):
         return context
     
     def get_queryset(self):
-        if issubclass(self.model.objects.__class__, RLSManager):
+        if issubclass(self.model.objects.__class__, RLSManager) or \
+            issubclass(self.model.objects.__class__, UserRLSManager):
             return self.model.objects.get_queryset(request=self.request)
         return super().get_queryset()
     
@@ -122,7 +125,8 @@ class BaseWriteView(PermissionRequiredMixin):
         # filter the field if it has affiliation
         for related_field in [r for r in form.fields if r.endswith("_id")]:
             related_model = self.model._meta.get_field(related_field).related_model
-            if issubclass(related_model.objects.__class__, RLSManager):
+            if issubclass(self.model.objects.__class__, RLSManager) or \
+                issubclass(self.model.objects.__class__, UserRLSManager):
                 form.fields[related_field].queryset = related_model.objects.get_queryset(request=self.request)
         return form
     
@@ -202,7 +206,7 @@ class BaseBulkDeleteView(BaseWriteView, View):
         context['title'] = f"are you sure you want to delete all these {self.model_name}s?"
         return context
 
-class BaseImportView(BaseWriteView, View):
+class BaseImportView(BaseCreateView):
     """
     Mixin for views that require permission to import an object.
     first, it will give a model form that asks the user to fill out the default value of each field.
@@ -262,10 +266,8 @@ class BaseImportView(BaseWriteView, View):
                     for field in form.fields:
                         # if cleaned_data is an array, use the indexed. else, just use its default value
                         if isinstance(data[field], list) and len(data[field]) > 1:
-                            try:
-                                initials[i][field] = data[field][i]
-                            except IndexError:
-                                continue    
+                            try: initials[i][field] = data[field][i]
+                            except IndexError: continue    
                         elif isinstance(data[field], list) and len(data[field]) == 1:
                             initials[i][field] = data[field][0]
                         else:
@@ -275,12 +277,12 @@ class BaseImportView(BaseWriteView, View):
         
         elif 'form-TOTAL_FORMS' in request.POST:
             formset = FormSet_Class(request.POST)
+            instances = []
             if formset.is_valid():
-                instances = []
                 for form in formset:
                     instances.append(form.save(commit=False))
                 self.model.objects.bulk_create(instances)
-                
+            
         return redirect(f'{self.app_label}:view_{self.model_name}')
 
 @require_POST
@@ -296,9 +298,8 @@ def set_faculty(request):
     else:
         faculty_id = int(faculty_id)
         user = request.user
-        authorized = user.has_perm('users.access_global')
-        if not authorized and \
-            faculty_id not in user.faculties.values_list('id', flat=True):
+        authorized = 'users.access_global' in s['permissions']
+        if not authorized and faculty_id not in user.faculties.values_list('id', flat=True):
             return JsonResponse({'error': 'Unauthorized faculty'}, status=403)
         s['selected_faculty'] = faculty_id
 
@@ -323,8 +324,29 @@ def set_program(request):
     else:
         program_id = int(program_id)
         user = request.user
-        authorized = user.has_perm('users.access_global') or user.has_perm('users.access_faculty_wide')
+        authorized = 'users.access_global' in s['permissions'] or \
+            'users.access_faculty_wide' in s['permissions']
         if not authorized and program_id not in user.programs.values_list('id', flat=True):
             return JsonResponse({'error': 'Unauthorized program'}, status=403)
         s['selected_program'] = program_id
+    return redirect(request.META.get('HTTP_REFERER', '/'))
+
+@require_POST
+def set_group(request):
+    """
+    Set the selected group for the user.
+    """
+    group_id = request.POST.get('group_id')
+    s = request.session
+    if group_id == "":
+        s['selected_group'] = "None"
+        s['permissions'] = []
+    else:
+        group_id = int(group_id)
+        user = request.user
+        if group_id not in user.groups.values_list('id', flat=True):
+            return JsonResponse({'error': 'Unauthorized group'}, status=403)
+        s['selected_group'] = group_id
+        s['permissions'] = list(Group.objects.get(id=group_id).permissions.all().values_list('codename', flat=True))
+    print(s['permissions'])
     return redirect(request.META.get('HTTP_REFERER', '/'))

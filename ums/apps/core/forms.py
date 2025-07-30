@@ -4,6 +4,8 @@ from crispy_forms.layout import Layout, Div, Field
 def get_grid_form(model_form_class):
     class GridForm(model_form_class):
         def __init__(self, *args, **kwargs):
+            request = kwargs.pop('request', None)
+            print(request)
             super().__init__(*args, **kwargs)
             self.helper = FormHelper()
             self.helper.form_tag = False

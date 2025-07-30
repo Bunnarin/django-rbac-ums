@@ -1,26 +1,35 @@
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseImportView
-from braces.views import UserFormKwargsMixin
 from .models import Student, User
 from .forms import UserForm, StudentForm
 
 class UserListView(BaseListView):
     model = User
-    table_fields = ['first_name', 'last_name', 'is_professor', 'is_staff', 'email', 'phone_number']
+    table_fields = ['first_name', 'last_name', 'is_professor', 'email', 'phone_number']
     object_actions = [('✏️', 'users:change_user', None), ('🗑️', 'users:delete_user', None)]
     actions = [('+', 'users:add_user', None),
-               ('import', 'users:import_user', 'users.add_user')]
+               ('import', 'users:import_user', 'add_user')]
 
     def get_queryset(self):
         return super().get_queryset().exclude(student__isnull=False)
 
 class UserImportView(BaseImportView):
     model = User
-    fields = ['first_name', 'last_name', 'email', 'phone_number', 'is_professor', 'is_staff', 'faculties', 'programs', 'groups']
+    # cannot include affiliation or permission here as I have no idea how to filter them in the formset
+    fields = ['first_name', 'last_name', 'email', 'phone_number','is_professor']
+    # form_class = UserForm
+    # def get_form_kwargs(self):
+    #     kwargs = super().get_form_kwargs()
+    #     kwargs['request'] = self.request
+    #     return kwargs
 
-class UserCreateView(UserFormKwargsMixin, BaseCreateView):
-    # this mixin will inject the user into the kwargs
+class UserCreateView(BaseCreateView):
     model = User
     form_class = UserForm
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['request'] = self.request
+        return kwargs
 
 class UserUpdateView(UserCreateView, BaseUpdateView):
     pass
@@ -42,6 +51,7 @@ class StudentListView(BaseListView):
 class StudentImportView(BaseImportView):
     model = Student
     form_class = StudentForm
+    
 
 class StudentCreateView(BaseCreateView):
     model = Student

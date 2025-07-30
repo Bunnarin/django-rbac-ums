@@ -27,15 +27,20 @@
     <script>
         $(document).ready(function() {
             {% with request.session as s %}
-                {% if not s.selected_faculty and all_faculties %}
+                {% if s.selected_group and not s.selected_faculty and all_faculties %}
                 // select the 2nd choice if exist
                     $('#faculty-form').find('option:eq(1)').prop('selected', true);
                     $('#faculty-form').submit();
                 {% endif %}
-                {% if not s.selected_program and s.selected_faculty and all_programs %}
+                {% if s.selected_group and not s.selected_program and s.selected_faculty and all_programs %}
                 // select the 2nd choice if exist
                     $('#program-form').find('option:eq(1)').prop('selected', true);
                     $('#program-form').submit();
+                {% endif %}
+                {% if not s.selected_group and all_groups %}
+                // select the 2nd choice if exist
+                    $('#group-form').find('option:eq(1)').prop('selected', true);
+                    $('#group-form').submit();
                 {% endif %}
             {% endwith %}
         });
@@ -81,6 +86,19 @@
                                     {{ program.name }}
                                 </option>
                             {% endif %}
+                        {% endfor %}
+                        </select>
+                    </form>
+
+                    <form method="POST" action="{% url 'core:set_group' %}" id="group-form">
+                        {% csrf_token %}
+                        <select name="group_id" class="form-select" onchange="this.form.submit()">
+                            <option value="" selected>None</option>
+                        {% for group in all_groups %}
+                            <option value="{{ group.id }}" 
+                                {% if group.id == s.selected_group %}selected{% endif %}>
+                                {{ group.name }}
+                            </option>
                         {% endfor %}
                         </select>
                     </form>

@@ -19,19 +19,13 @@ class OrganizationMixin(models.Model):
 
     def clean(self):
         super().clean()
-        if hasattr(self, 'faculty') and hasattr(self, 'program') and \
-            self.faculty != self.program.faculty:
-            raise ValidationError({
-                'program': 'The selected program does not belong to the assigned faculty.'
-                })
-
-    def save(self, *args, **kwargs):
-        """
-        Validate that the selected program belongs to the selected faculty.
-        we do it in save and not clean because the form needs to inject affiliation after the clean
-        """
         if self.faculty != self.program.faculty:
-            raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
+            raise ValidationError(
+                {'program': 'The selected program does not belong to the assigned faculty.'}
+                )
+    
+    def save(self, *args, **kwargs):
+        self.clean()
         super().save(*args, **kwargs)
     
     class Meta:
@@ -63,8 +57,7 @@ class OrganizationNullMixin(models.Model):
         Validate that the selected program belongs to the selected faculty.
         we do it in save and not clean because the form needs to inject affiliation after the clean
         """
-        if self.faculty and self.program and self.faculty != self.program.faculty:
-            raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
+        self.clean()
         super().save(*args, **kwargs)
     
     class Meta:
@@ -83,7 +76,7 @@ class ProgramNullMixin(models.Model):
 
     def clean(self):
         super().clean()
-        if self.program and self.faculty and self.faculty != self.program.faculty:
+        if self.program and self.faculty != self.program.faculty:
             raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
 
     def save(self, *args, **kwargs):
@@ -91,8 +84,7 @@ class ProgramNullMixin(models.Model):
         Validate that the selected program belongs to the selected faculty.
         we do it in save and not clean because the form needs to inject affiliation after the clean
         """
-        if self.program and self.faculty != self.program.faculty:
-            raise ValidationError({'program': 'The selected program does not belong to the assigned faculty.'})
+        self.clean()
         super().save(*args, **kwargs)
     
     def get_user_rls_filter(self, user):

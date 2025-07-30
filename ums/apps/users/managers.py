@@ -9,13 +9,11 @@ class UserRLSManager(RLSManager, UserManager):
     def _for_request(self, request):
         queryset = super(UserManager, self).get_queryset()
         user = request.user
+        s = request.session
 
-        if user.has_perm('users.access_global') or \
-            user.has_perm('users.access_faculty_wide') or \
-            user.has_perm('users.access_program_wide'):
-            
-            faculty_id = request.session.get('selected_faculty')
-            program_id = request.session.get('selected_program')
+        if any(perm in s['permissions'] for perm in ['access_global', 'access_faculty_wide', 'access_program_wide']):
+            faculty_id = s.get('selected_faculty')
+            program_id = s.get('selected_program')
             
             if faculty_id != "None":
                 queryset = queryset.filter(faculties=faculty_id)
@@ -29,8 +27,7 @@ class UserRLSManager(RLSManager, UserManager):
 
             return queryset
 
-        elif hasattr(self.model, 'get_user_rls_filter'):
+        else:
+            # we don't check if the model has the method or not, we do this to ensure that it's explicity defined
             q = self.model().get_user_rls_filter(user)
             return queryset.filter(q)
-
-        return queryset.none()

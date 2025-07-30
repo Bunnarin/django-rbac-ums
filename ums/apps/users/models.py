@@ -23,9 +23,9 @@ class User(AbstractUser):
         return f"{self.first_name} {self.last_name}"
     
     def get_user_rls_filter(self, user):
-        return Q(username=user__username)
+        return Q(username=user.username)
 
-    def save(self, *args, **kwargs):
+    def clean(self):
         """
         First, make sure that if it's a new user, we set an unusable password
         Second, make sure that we can save multiple users with blank email (because the default can't for some reason)
@@ -33,7 +33,7 @@ class User(AbstractUser):
         Fourth, make sure that if they are staff, then they get added into the staff group
         """
         if self.is_superuser:
-            return super().save(*args, **kwargs)
+            return
 
         creation = not self.pk
         if creation:
@@ -55,20 +55,18 @@ class User(AbstractUser):
             self.phone_number = None
                 
         # ensure that staff status always in staff n prof group
-        staff_group, _ = Group.objects.get_or_create(name="ALL STAFF")
+        staff_group, _ = Group.objects.get_or_create(name="STAFF")
         if self.is_staff:
             self.groups.add(staff_group)
         elif not creation:
             self.groups.remove(staff_group)
         
-        professor_group, _ = Group.objects.get_or_create(name="ALL PROFESSOR")
+        professor_group, _ = Group.objects.get_or_create(name="PROFESSOR")
         if self.is_professor:
             self.groups.add(professor_group)
         elif not creation:
             self.groups.remove(professor_group)
-
-        super().save(*args, **kwargs)
-
+        
     class Meta:
         verbose_name = "User"
         permissions = [
@@ -90,27 +88,10 @@ class Student(models.Model):
         return self.user.__str__()
     
     def clean(self):
-        _class = self._class
-        if _class and hasattr(self, 'faculty') and hasattr(self, 'program') and \
-            (_class.faculty != self.faculty or _class.program != self.program):
-            raise ValidationError("Class must belong to the same faculty and program as the student.")
-
-    def save(self, *args, **kwargs):
-        """
-        last resort: ensure affiliation integrity by overriding the user input
-        also add them to the all student grp
-        """
-        if self._class:
-            self.faculty = self._class.faculty
-            self.program = self._class.program
-        
-        student_group, _ = Group.objects.get_or_create(name="ALL STUDENT")
+        student_group, _ = Group.objects.get_or_create(name="STUDENT")
         self.user.groups.add(student_group)
-        
-        super().save(*args, **kwargs)
     
     def delete(self, *args, **kwargs):
-        # remove the user if they don't have any more profile associated (ONLY FOR STUDENT) for clean up purpose
         # remove the user from the student grp
         if self.user.groups.count() == 1 and \
             self.user.user_permissions.count() == 0 and \
@@ -120,7 +101,7 @@ class Student(models.Model):
             self.user.delete()
             Student._meta.get_field('user').remote_field.on_delete = models.PROTECT
         
-        student_group, _ = Group.objects.get_or_create(name="ALL STUDENT")
+        student_group, _ = Group.objects.get_or_create(name="STUDENT")
         if self.user.pk:
             self.user.groups.remove(student_group)
 
