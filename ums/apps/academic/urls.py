@@ -17,7 +17,7 @@ urlpatterns = [
     # schedule
     path('schedules/', views.ScheduleListView.as_view(), name='view_schedule'),
     # score
-    path('scores/<int:student_pk>/', views.ScoreStudentListView.as_view(), name='view_score'),
+    path('scores/<int:student_pk>', views.ScoreStudentListView.as_view(), name='view_score'),
     path('scores/add/<int:schedule_pk>/', views.ScoreScheduleEditView.as_view(), name='add_score'),
     # evaluation
     path('evaluations/', views.EvaluationListView.as_view(), name='view_evaluation'),

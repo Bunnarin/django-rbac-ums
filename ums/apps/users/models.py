@@ -79,7 +79,7 @@ class User(AbstractUser):
         ]
 
 class Student(models.Model):
-    user = models.ForeignKey(User, on_delete=models.PROTECT)
+    user = models.OneToOneField(User, on_delete=models.PROTECT)
     _class = models.ForeignKey('academic.Class', on_delete=models.SET_NULL, related_name="students", null=True, blank=True)
     
     objects = RLSManager(field_with_affiliation='_class')
@@ -98,14 +98,13 @@ class Student(models.Model):
     def save(self, *args, **kwargs):
         commit = kwargs.pop('commit', None)
         self.clean()
-        if commit:
-            super().save()
+        if commit == False:
+            return
+        super().save()
     
     def delete(self, *args, **kwargs):
         # remove the user from the student grp
-        if self.user.groups.count() == 1 and \
-            self.user.user_permissions.count() == 0 and \
-            not Student.objects.filter(user=self.user).exclude(pk=self.pk).exists():
+        if self.user.groups.count() == 1:
             # do this to bypass the on_delete protection
             Student._meta.get_field('user').remote_field.on_delete = models.CASCADE
             self.user.delete()

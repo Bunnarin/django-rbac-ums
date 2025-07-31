@@ -1,53 +1,25 @@
 from django import forms
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from apps.academic.models import Score, Schedule, Class
+from apps.academic.models import Score, Schedule
 from apps.users.models import User
 
-class ScoreBulkCreateForm(forms.ModelForm):
-    class Meta:
-        model = Score
-        fields = []  # We'll add fields dynamically
+def create_score_form_class(students, existing_scores):
+    class ScoreBulkCreateForm(forms.ModelForm):
+        class Meta:
+            model = Score
+            fields = []  # We'll add fields dynamically
 
-    def __init__(self, *args, **kwargs):
-        self.students = kwargs.pop('students', {})
-        self.existing_scores = kwargs.pop('existing_scores', {})
-        self.schedule = kwargs.pop('schedule', {})
-        super().__init__(*args, **kwargs)
-        
-        # Add score field for each student
-        for student in self.students:
-            initial_score = self.existing_scores.get(student.id) or 0
-            # initial_score = initial_value.score if initial_value else 0
-            self.fields[f'score_{student.id}'] = forms.IntegerField(
-                label=student,
-                min_value=0,
-                max_value=100,
-                initial=initial_score,
-            )
-    
-    @transaction.atomic
-    def save(self):
-        score_objects = []
-        for student in self.students:
-            score_value = self.cleaned_data.get(f'score_{student.id}')
-            # Only process if score is different from inital value
-            if score_value == self.existing_scores.get(student.id):
-                continue
-            score_objects.append(
-                Score(
-                    student=student,
-                    course=self.schedule.course,
-                    score=score_value
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            for student in students:
+                self.fields[f'score_{student.id}'] = forms.IntegerField(
+                    label=student,
+                    min_value=0,
+                    max_value=100,
+                    initial=existing_scores.get(student.id).score,
                 )
-            )            
-        # Use bulk_update_or_create to handle both create and update
-        if score_objects:
-            Score.objects.bulk_update_or_create(
-                score_objects,
-                ['score'],  # Fields to update
-                match_field='student'  # Field to match on for updates
-            )   
+    return ScoreBulkCreateForm
     
 class ScheduleForm(forms.ModelForm):
     # add the prof query field to get or create

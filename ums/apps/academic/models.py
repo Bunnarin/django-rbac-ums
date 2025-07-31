@@ -61,10 +61,6 @@ class Schedule(models.Model):
     class Meta:
         unique_together = ('professor', 'course', '_class')
     
-    def clean(self):
-        if self.course.faculty != self._class.faculty or self.course.program != self._class.program:
-            raise ValidationError("Course and class affiliation do not match")
-    
 class Score(models.Model):
     student = models.ForeignKey(Student, on_delete=models.PROTECT)
     course = models.ForeignKey(Course, on_delete=models.PROTECT)

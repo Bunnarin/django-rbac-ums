@@ -2,10 +2,11 @@ from django.contrib import admin
 from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
 from allauth.account.models import EmailAddress
-from .models import User
+from .models import User, Student
 
 # Unregister default allauth email admin since we don't need it
 admin.site.unregister(EmailAddress)
+admin.site.register(Student)
 
 # allow only editing in the user admin
 @admin.register(User)

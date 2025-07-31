@@ -48,39 +48,16 @@ class StudentForm(forms.ModelForm):
     last_name = forms.CharField()
     email = forms.EmailField(required=False)
     phone_number = forms.CharField(required=False)
-    new_user = forms.BooleanField(required=False, initial=True)
-    selected_user = forms.ChoiceField(required=False, disabled=True)
     
     class Meta:
         model = Student
-        fields = ['_class']
-    
-    def clean(self):
-        """
-        this is to ensure the user does not typo name and to confirm their intention
-        """
-        data = super().clean()
-        exist = User.objects.filter(first_name=data['first_name'], last_name=data['last_name']).exists()
-        if exist and data['new_user']:
-            duplicated_users = User.objects.filter(first_name=data['first_name'], last_name=data['last_name'])
-            self.fields['selected_user'].choices = [(user.id, f"{user.email} {user.phone_number}") for user in duplicated_users]
-            self.fields['selected_user'].disabled = False
-            raise ValidationError({"new_user": "User already exists. please check name spelling OR uncheck THIS and select an existing user instead"})
-        elif not exist and not data['new_user']:
-            raise ValidationError({"new_user": "User does not exist. please check name spelling OR check THIS to create this user instead"})
-        return data        
+        fields = ['_class']      
 
     def save(self, commit=True):
         data = self.cleaned_data
-        if data['new_user']:
-            user = User.objects.create(first_name=data['first_name'], last_name=data['last_name'])
-        else:
-            user = User.objects.get(pk=data['selected_user'])
-
-        user.email = data['email']
-        user.phone_number = data['phone_number']
-        user.save()
-
+        user = User.objects.create(
+            first_name=data['first_name'], last_name=data['last_name'], email=data['email'], phone_number=data['phone_number']
+            )
         student = super().save(commit=False)
         student.user = user
         if commit:

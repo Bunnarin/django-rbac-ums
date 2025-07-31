@@ -122,19 +122,23 @@ class BaseWriteView(PermissionRequiredMixin):
         if form.fields.get('program'):
             form.fields.pop('program')
         # filter the field if it has affiliation
-        for related_field in [r for r in form.fields if r.endswith("_id")]:
-            related_model = self.model._meta.get_field(related_field).related_model
+        for field in form.fields:
+            try: related_model = self.model._meta.get_field(field).related_model
+            except: continue
+            if not related_model:
+                continue
             if issubclass(related_model.objects.__class__, RLSManager) or \
                 issubclass(related_model.objects.__class__, UserRLSManager):
-                form.fields[related_field].queryset = related_model.objects.get_queryset(request=self.request)
+                form.fields[field].queryset = related_model.objects.get_queryset(request=self.request)
         return form
     
     def form_valid(self, form):
         if not hasattr(form, "instance"):
             return super().form_valid(form)
 
-        s = self.request.session
         # inject the faculty and program
+        s = self.request.session
+        
         if s['selected_faculty'] == "None": 
             form.instance.faculty = None
         else: 
@@ -231,9 +235,10 @@ class BaseImportView(BaseCreateView):
             form.fields[field].required = False
             try: field_instance = self.model._meta.get_field(field)
             except: 
-                form.fields[field].widget = forms.Textarea()
+                if not isinstance(form.fields[field], forms.BooleanField):
+                    form.fields[field].widget = forms.Textarea()
                 continue
-            if not field_instance.is_relation:
+            if not field_instance.is_relation and not isinstance(form.fields[field], forms.BooleanField):
                 form.fields[field].widget = forms.Textarea()
         return form
     
@@ -245,7 +250,7 @@ class BaseImportView(BaseCreateView):
     def post(self, request, *args, **kwargs):
         FormSet_Class = formset_factory(
             self.form_class or modelform_factory(self.model, fields=self.fields),
-            extra=1
+            extra=0
         )
         if 'form-TOTAL_FORMS' not in request.POST:
             form = self._get_default_form(request.POST)
@@ -272,6 +277,7 @@ class BaseImportView(BaseCreateView):
                             initials[i][field] = data[field]
                 formset = FormSet_Class(initial=initials)
                 return render(request, self.template_name, {'formset': formset})
+            return render(request, self.template_name, {'form': form})
         
         elif 'form-TOTAL_FORMS' in request.POST:
             formset = FormSet_Class(request.POST)
@@ -282,8 +288,7 @@ class BaseImportView(BaseCreateView):
                     if self.save_before_create:
                         instance.save(commit=False)
                     instances.append(instance)
-                self.model.objects.bulk_create(instances)
-            
+                self.model.objects.bulk_create(instances)            
         return redirect(f'{self.app_label}:view_{self.model_name}')
 
 @require_POST
