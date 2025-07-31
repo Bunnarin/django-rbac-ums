@@ -2,11 +2,11 @@ from django.views.generic import FormView
 from django.urls import reverse_lazy
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from django.forms.models import modelform_factory, inlineformset_factory
+from django.forms.models import modelform_factory
 from django_jsonform.widgets import JSONFormWidget
+from extra_views import InlineFormSetView
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseBulkDeleteView, BaseWriteView
 from apps.core.forms import json_to_schema
-from apps.organization.models import Faculty, Program
 from apps.users.models import Student
 from .models import Course, Class, Schedule, Score, Evaluation, EvalationTemplate
 from .forms import create_score_form_class, ScheduleForm
@@ -138,46 +138,26 @@ class ClassDeleteView(BaseDeleteView):
 
 class ClassCreateView(BaseCreateView):
     model = Class
-    fields = '__all__'
-    success_url = reverse_lazy('academic:class_list')
 
-    def get_context_data(self, **kwargs):
-        data = super().get_context_data(**kwargs)
-        data['formset'] = inlineformset_factory(Class, Schedule, extra=1, can_delete=True, form=ScheduleForm)(self.request.POST or None)
-        return data
+class ClassChangeView(BaseWriteView, InlineFormSetView):
+    model = Class
+    inline_model = Schedule
+    form_class = ScheduleForm
+    factory_kwargs = {'extra': 1, 'can_delete': True}
+    fields = ['course', '_class', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']     
+    success_url = reverse_lazy('academic:view_class')
+    template_name = 'core/generic_form.html'
+    permission_required = [('change', None)]
 
-    @transaction.atomic
-    def form_valid(self, form):        
-        # inject the faculty and program
-        s = self.request.session
-        
-        if s['selected_faculty'] == "None": 
-            form.instance.faculty = None
-        else: 
-            form.instance.faculty = Faculty.objects.get(pk=s['selected_faculty'])
-
-        if s['selected_program'] == "None": 
-            form.instance.program = None
-        else: 
-            form.instance.program = Program.objects.get(pk=s['selected_program'])
-        
-        # save changes
-        context = self.get_context_data()
-        formset = context['formset']
-        if form.is_valid() and formset.is_valid():
-            formset.instance = form.save()
-            instances = formset.save(commit=False)
-            for obj in formset.deleted_objects:
-                obj.delete()
-            for instance in instances:
-                instance.save()
-            return super().form_valid(form)
-        elif not formset.is_valid():
-            form.add_error(None,"schedules must be unique OR any one of the professor must exists")
-        return super().form_invalid(form)
-
-class ClassUpdateView(ClassCreateView, BaseUpdateView):
-    def get_context_data(self, **kwargs):
-        data = super(BaseUpdateView, self).get_context_data(**kwargs)
-        data['formset'] = inlineformset_factory(Class, Schedule, extra=1, can_delete=True, form=ScheduleForm)(self.request.POST or None, instance=self.object)
-        return data
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['request'] = self.request
+        return kwargs
+    
+    def formset_valid(self, formset):
+        for data in formset.cleaned_data:
+            if data['DELETE']:
+                Schedule.objects.get(
+                    course=data['course'], _class=data['_class'], professor__first_name=data['first_name'], professor__last_name=data['last_name']
+                    ).delete()
+        return super().formset_valid(formset)

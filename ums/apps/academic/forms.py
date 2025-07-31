@@ -1,7 +1,6 @@
 from django import forms
-from django.db import transaction
 from django.core.exceptions import ValidationError
-from apps.academic.models import Score, Schedule
+from apps.academic.models import Score, Schedule, Course
 from apps.users.models import User
 
 def create_score_form_class(students, existing_scores):
@@ -30,18 +29,20 @@ class ScheduleForm(forms.ModelForm):
         model = Schedule
         fields = ['course', '_class', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']     
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, request, **kwargs):
         super().__init__(*args, **kwargs)
+        # filter the course choices based on the current affiliation
+        self.fields['course'].queryset = Course.objects.get_queryset(request=request)
         # populate the first_name and last_name fields if have self.object
         if self.instance.pk:
             self.fields['first_name'].initial = self.instance.professor.first_name
             self.fields['last_name'].initial = self.instance.professor.last_name
 
     def clean(self):
-        # check if the professor exists
         data = self.cleaned_data
         if not User.objects.filter(first_name=data['first_name'], last_name=data['last_name']).exists():
-            raise ValidationError("Professor does not exist")
+            print("hiiiiiiiiiiiiiiiiiiii")
+            self.add_error(None, 'Professor does not exist')
 
     def save(self, commit=True):
         data = self.cleaned_data

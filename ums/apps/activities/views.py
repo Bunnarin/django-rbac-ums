@@ -1,9 +1,10 @@
 from django.views.generic import ListView
 from apps.core.forms import json_to_schema
 from django.forms.models import modelform_factory
+from django_jsonform.widgets import JSONFormWidget
 from apps.core.views import BaseDeleteView, BaseListView, BaseCreateView, BaseUpdateView, BaseBulkDeleteView
-from .models import Activity, ActivityTemplate
 from apps.core.forms import json_to_schema
+from .models import Activity, ActivityTemplate
 
 class ActivityListView(BaseListView):
     """
@@ -52,8 +53,9 @@ class ActivityBulkDeleteView(BaseBulkDeleteView):
 class ActivityTemplateListView(BaseListView):
     model = ActivityTemplate
     table_fields = ['name']
-    object_actions = [('✏️', 'activities:change_activitytemplate'), ('🗑️', 'activities:delete_activitytemplate')]
-    actions = [('+', 'activities:add_activitytemplate')]
+    object_actions = [('✏️', 'activities:change_activitytemplate', None),
+     ('🗑️', 'activities:delete_activitytemplate', None)]
+    actions = [('+', 'activities:add_activitytemplate', None)]
 
 class ActivityTemplateCreateView(BaseCreateView):
     model = ActivityTemplate

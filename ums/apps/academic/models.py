@@ -40,7 +40,7 @@ class Schedule(models.Model):
     """
     professor = models.ForeignKey(User, on_delete=models.PROTECT)
     course = models.ForeignKey(Course, on_delete=models.PROTECT)
-    _class = models.ForeignKey(Class, on_delete=models.PROTECT, related_name="schedules")
+    _class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name="schedules")
     monday = models.CharField(max_length=13, null=True, blank=True)
     tuesday = models.CharField(max_length=13, null=True, blank=True)
     wednesday = models.CharField(max_length=13, null=True, blank=True)

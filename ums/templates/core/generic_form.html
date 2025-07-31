@@ -53,7 +53,7 @@
         <div class="card-header">
             <h2>{{ title }}</h2>
         </div>
-        <div class="card-body">
+        <div class="card-body table-responsive">
             <form method="post" class="mb-4">
                 {% csrf_token %}
                 {% if form %}
@@ -65,7 +65,7 @@
                     <strong>{{ formset.prefix }}</strong>
                     {{ formset.management_form }}
                     {{ formset.media }}
-                <table>
+                <table class="table">
                     {% for form in formset %}
                         {% if forloop.first %}
                         <tr>
@@ -77,7 +77,9 @@
                         
                         <tr class="formset_row">
                         {% for field in form.visible_fields %}
-                            <td>{{ field }}</td>
+                            <td>
+                            {{ field }}
+                            </td>
                         {% endfor %}
                         </tr>
                     {% endfor %}
@@ -117,7 +119,8 @@
 <script type="text/javascript">
     $('.formset_row').formset({
         prefix: '{{ formset.prefix }}',
-        deleteText: '❌', 
+        addCssClass: 'btn btn-primary',  
+        deleteCssClass: 'btn btn-danger',
     });
 </script>
 {% endblock %}

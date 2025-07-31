@@ -51,7 +51,7 @@ class OrganizationNullMixin(models.Model):
         super().clean()
         if not hasattr(self, 'program') or not hasattr(self, 'faculty'):
             return
-        if self.faculty != self.program.faculty:
+        if self.program and self.faculty != self.program.faculty:
             raise ValidationError({
                 'program': 'The selected program does not belong to the assigned faculty.'
                 })

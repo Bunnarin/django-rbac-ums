@@ -43,6 +43,7 @@ class BaseListView(ListView):
         # Set up URLs
         context["object_actions"] = {}
         for action, url, permission in self.object_actions:
+            # it can be None for when this view can derive the permission on its own
             if not permission:
                 _, permission = url.split(':')
             if permission in self.request.session['permissions']:
@@ -245,6 +246,7 @@ class BaseImportView(BaseCreateView):
         if 'form-TOTAL_FORMS' not in request.POST:
             form = self._get_default_form(request.POST)
             if form.is_valid():
+                # calculating the num form
                 data = form.cleaned_data
                 max_row_num = 0
                 for field in form.fields:

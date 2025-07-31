@@ -12,7 +12,7 @@ urlpatterns = [
     # class
     path('classes/', views.ClassListView.as_view(), name='view_class'),
     path('classes/create/', views.ClassCreateView.as_view(), name='add_class'),
-    path('classes/change/<int:pk>/', views.ClassUpdateView.as_view(), name='change_class'),
+    path('classes/change/<int:pk>/', views.ClassChangeView.as_view(), name='change_class'),
     path('classes/delete/<int:pk>/', views.ClassDeleteView.as_view(), name='delete_class'),
     # schedule
     path('schedules/', views.ScheduleListView.as_view(), name='view_schedule'),
