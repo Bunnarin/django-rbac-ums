@@ -12,8 +12,7 @@ class UserForm(forms.ModelForm):
         model = User
         fields = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs', 'groups']
     
-    def __init__(self, *args, **kwargs):
-        request = kwargs.pop('request', None)
+    def __init__(self, *args, request, **kwargs):
         user = request.user
         s = request.session
         super().__init__(*args, **kwargs)

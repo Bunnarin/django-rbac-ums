@@ -3,17 +3,18 @@ from django.forms import formset_factory
 from django.urls import reverse_lazy
 from django.db import transaction
 from django.http import JsonResponse
+from django.core.exceptions import PermissionDenied
 from django.views.generic import View, ListView, DeleteView, CreateView, UpdateView
 from django.contrib.auth.models import Group
-from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.decorators.http import require_POST
 from django.forms.models import modelform_factory
 from django.shortcuts import redirect, render
 from apps.organization.models import Faculty, Program
 from apps.users.managers import UserRLSManager
 from .managers import RLSManager
+from .forms import BaseFormSet
 
-class BaseListView(PermissionRequiredMixin, ListView):
+class BaseListView(ListView):
     """
     Base view for displaying a list of objects.
     """
@@ -23,13 +24,14 @@ class BaseListView(PermissionRequiredMixin, ListView):
     template_name = 'core/generic_list.html'
     table_fields = []
 
-    def get_permission_required(self):
+    def dispatch(self, request, *args, **kwargs):
+        # check if permission in request.session['permission']
         self.app_label = self.model._meta.app_label
-        self.model_name = self.model._meta.model_name.lower()
-        for action in ["view", "change", "delete"]:
-            if f"{action}_{self.model_name}" in self.request.session['permissions']:
-                return [f'{self.app_label}.{action}_{self.model_name}']
-        return [f'{self.app_label}.view_{self.model_name}']
+        self.model_name = self.model._meta.model_name
+        s = request.session
+        if not any(perm in s['permissions'] for perm in [f'view_{self.model_name}', f'change_{self.model_name}', f'delete_{self.model_name}']):
+            raise PermissionDenied("You do not have permission to access this page.")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -87,13 +89,24 @@ class BaseListView(PermissionRequiredMixin, ListView):
         
         return queryset
 
-class BaseWriteView(PermissionRequiredMixin):
+class BaseWriteView():
     """
     Mixin for views that require permission to add or update an object.
     """
     pk_url_kwarg = 'pk'
     fields = '__all__'
     template_name = 'core/generic_form.html'
+    permission_required = []
+
+    def dispatch(self, request, *args, **kwargs):
+        self.app_label = self.model._meta.app_label
+        self.model_name = self.model._meta.model_name
+        for action, model in self.permission_required:
+            if not model:
+                model = self.model_name
+            if not any(perm in request.session['permissions'] for perm in [f'{action}_{model}']):
+                raise PermissionDenied("You do not have permission to access this page.")
+        return super().dispatch(request, *args, **kwargs)
     
     def get_success_url(self):
         return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
@@ -155,29 +168,19 @@ class BaseCreateView(BaseWriteView, CreateView):
     """
     Mixin for views that require permission to add an object.
     """
-    
-    def get_permission_required(self):
-        self.app_label = self.model._meta.app_label
-        self.model_name = self.model._meta.model_name.lower()
-        return [f'{self.app_label}.add_{self.model_name}']
+    permission_required = [('add', None)]
 
 class BaseUpdateView(BaseWriteView, UpdateView):
     """
     Mixin for views that require permission to update an object.
     """
-    def get_permission_required(self):
-        self.app_label = self.model._meta.app_label
-        self.model_name = self.model._meta.model_name.lower()
-        return [f'{self.app_label}.change_{self.model_name}']
+    permission_required = [('change', None)]
         
 class BaseDeleteView(BaseWriteView, DeleteView):
     """
     Mixin for views that require permission to delete an object.
     """
-    def get_permission_required(self):
-        self.app_label = self.model._meta.app_label
-        self.model_name = self.model._meta.model_name.lower()
-        return [f'{self.app_label}.delete_{self.model_name}']
+    permission_required = [('delete', None)]
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -191,11 +194,7 @@ class BaseBulkDeleteView(BaseWriteView, View):
     """
     model = None
     template_name = 'core/generic_form.html'
-
-    def get_permission_required(self):
-        self.app_label = self.model._meta.app_label
-        self.model_name = self.model._meta.model_name.lower()
-        return [f'{self.app_label}.delete_{self.model_name}']
+    permission_required = [('delete', None)]
     
     def get(self, request, *args, **kwargs):
         return render(request, self.template_name, {'object': f'{self.model._meta.verbose_name_plural}'})
@@ -218,18 +217,10 @@ class BaseImportView(BaseCreateView):
     those rows of form comes with prefilled default that they input and they can modify it
     finally, they can submit the form and it will bulk create all the objects
     """
-    template_name = 'core/generic_form.html'
-    fields = '__all__'
-    form_class = None
-
-    def get_permission_required(self):
-        self.app_label = self.model._meta.app_label
-        self.model_name = self.model._meta.model_name.lower()
-        return [f'{self.app_label}.add_{self.model_name}']
 
     def _get_default_form(self, request_post=None):
         form_class = self.form_class or modelform_factory(self.model, fields=self.fields)
-        form = form_class(request_post or None)
+        form = form_class(request_post or None, request=self.request)
         for field in form.fields:
             form.fields[field].required = False
             try: field_instance = self.model._meta.get_field(field)
@@ -249,7 +240,7 @@ class BaseImportView(BaseCreateView):
     def post(self, request, *args, **kwargs):
         FormSet_Class = formset_factory(
             self.form_class or modelform_factory(self.model, fields=self.fields),
-            extra=0
+            extra=0, formset=BaseFormSet
         )
         if 'form-TOTAL_FORMS' not in request.POST:
             form = self._get_default_form(request.POST)
@@ -274,12 +265,12 @@ class BaseImportView(BaseCreateView):
                             initials[i][field] = data[field][0]
                         else:
                             initials[i][field] = data[field]
-                formset = FormSet_Class(initial=initials)
+                formset = FormSet_Class(initial=initials, form_kwargs={'request': request})
                 return render(request, self.template_name, {'formset': formset})
             return render(request, self.template_name, {'form': form})
         
         elif 'form-TOTAL_FORMS' in request.POST:
-            formset = FormSet_Class(request.POST)
+            formset = FormSet_Class(request.POST, form_kwargs={'request': request})
             instances = []
             if formset.is_valid():
                 for form in formset:

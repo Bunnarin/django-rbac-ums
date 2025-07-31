@@ -1,16 +1,15 @@
-from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic import FormView
 from django.urls import reverse_lazy
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.forms.models import modelform_factory, inlineformset_factory
 from django_jsonform.widgets import JSONFormWidget
-from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseBulkDeleteView, BaseImportView
+from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseBulkDeleteView, BaseWriteView
 from apps.core.forms import json_to_schema
 from apps.organization.models import Faculty, Program
 from apps.users.models import Student
 from .models import Course, Class, Schedule, Score, Evaluation, EvalationTemplate
-from .forms import create_score_form_class
+from .forms import create_score_form_class, ScheduleForm
 
 class CourseListView(BaseListView):
     model = Course
@@ -41,12 +40,11 @@ class ScoreStudentListView(BaseListView):
     def get_queryset(self):
         return Score.objects.filter(student_id=self.kwargs['student_pk']).select_related('course')
 
-class ScoreScheduleEditView(PermissionRequiredMixin, FormView):
+class ScoreScheduleEditView(BaseWriteView, FormView):
     """
     View for bulk creating/updating scores for all students in a class.
     """
-    template_name = 'core/generic_form.html'
-    permission_required = 'academic:add_score'
+    permission_required = [('add', 'score')]
     success_url = reverse_lazy('academic:view_schedule')
 
     def get_form(self):
@@ -92,12 +90,11 @@ class EvaluationListView(BaseListView):
     table_fields = ['schedule.course', 'schedule._class', 'schedule.professor', 'response']
     actions = [('clear all', 'academic:delete_evaluation', None)]
 
-class EvaluationCreateView(PermissionRequiredMixin, FormView):
+class EvaluationCreateView(BaseWriteView, FormView):
     """
     View for creating/updating an evaluation for a schedule.
     """
-    template_name = 'core/generic_form.html'
-    permission_required = 'academic.add_evaluation'
+    permission_required = [('add', 'evaluation')]
     success_url = reverse_lazy('academic:view_schedule')
 
     # throw an error if they've already created the evaluation
@@ -146,8 +143,7 @@ class ClassCreateView(BaseCreateView):
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
-        data['formset'] = inlineformset_factory(Class, Schedule, extra=1, can_delete=True, form=modelform_factory(
-            Schedule, fields='__all__'))(self.request.POST or None)
+        data['formset'] = inlineformset_factory(Class, Schedule, extra=1, can_delete=True, form=ScheduleForm)(self.request.POST or None)
         return data
 
     @transaction.atomic
@@ -177,12 +173,11 @@ class ClassCreateView(BaseCreateView):
                 instance.save()
             return super().form_valid(form)
         elif not formset.is_valid():
-            form.add_error(None,"schedules must be unique")
+            form.add_error(None,"schedules must be unique OR any one of the professor must exists")
         return super().form_invalid(form)
 
 class ClassUpdateView(ClassCreateView, BaseUpdateView):
     def get_context_data(self, **kwargs):
         data = super(BaseUpdateView, self).get_context_data(**kwargs)
-        data['formset'] = inlineformset_factory(Class, Schedule, extra=1, can_delete=True, form=modelform_factory(
-            Schedule, fields='__all__'))(self.request.POST or None, instance=self.object)
+        data['formset'] = inlineformset_factory(Class, Schedule, extra=1, can_delete=True, form=ScheduleForm)(self.request.POST or None, instance=self.object)
         return data

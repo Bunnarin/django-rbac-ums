@@ -14,13 +14,7 @@ class UserListView(BaseListView):
 
 class UserImportView(BaseImportView):
     model = User
-    # cannot include affiliation or permission here as I have no idea how to filter them in the formset
-    fields = ['first_name', 'last_name', 'email', 'phone_number','is_professor']
-    # form_class = UserForm
-    # def get_form_kwargs(self):
-    #     kwargs = super().get_form_kwargs()
-    #     kwargs['request'] = self.request
-    #     return kwargs
+    form_class = UserForm
 
 class UserCreateView(BaseCreateView):
     model = User
