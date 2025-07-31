@@ -221,7 +221,6 @@ class BaseImportView(BaseCreateView):
     template_name = 'core/generic_form.html'
     fields = '__all__'
     form_class = None
-    save_before_create = False
 
     def get_permission_required(self):
         self.app_label = self.model._meta.app_label
@@ -285,8 +284,7 @@ class BaseImportView(BaseCreateView):
             if formset.is_valid():
                 for form in formset:
                     instance = form.save(commit=False)
-                    if self.save_before_create:
-                        instance.save(commit=False)
+                    instance.clean()
                     instances.append(instance)
                 self.model.objects.bulk_create(instances)            
         return redirect(f'{self.app_label}:view_{self.model_name}')

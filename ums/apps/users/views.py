@@ -51,7 +51,6 @@ class StudentListView(BaseListView):
 class StudentImportView(BaseImportView):
     model = Student
     form_class = StudentForm
-    save_before_create = True #this is to make sure they get added to the student grp
     
 class StudentCreateView(BaseCreateView):
     model = Student

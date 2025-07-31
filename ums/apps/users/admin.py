@@ -11,7 +11,7 @@ admin.site.register(Student)
 # allow only editing in the user admin
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    fields = ['is_active', 'is_staff']
+    # fields = ['is_active', 'is_staff']
     def get_add_permission(self, request):
         return False
     def get_delete_permission(self, request):
@@ -39,10 +39,7 @@ class CustomGroupAdmin(admin.ModelAdmin):
         if db_field.name == "permissions":
             if request and not request.user.is_superuser:
                 user = request.user
-                user_perms_direct = user.user_permissions.all()
-                user_perms_via_groups = Permission.objects.filter(group__in=user.groups.all())
-
-                allowed_permissions_qs = (user_perms_direct | user_perms_via_groups).distinct()
+                user_perms_via_groups = user.get_group_permissions()
 
                 extended_permissions_qs = Permission.objects.filter(
                     Q(codename="access_faculty_wide") |
@@ -50,9 +47,9 @@ class CustomGroupAdmin(admin.ModelAdmin):
                 ).distinct()
 
                 if any(perm for perm in request.session['permissions'] if perm in ["access_global", "access_faculty_wide"]):
-                    allowed_permissions_qs = (allowed_permissions_qs | extended_permissions_qs).distinct()
+                    user_perms_via_groups = (user_perms_via_groups | extended_permissions_qs).distinct()
 
-                kwargs["queryset"] = allowed_permissions_qs.select_related("content_type")
+                kwargs["queryset"] = user_perms_via_groups.select_related("content_type")
             else:
                 kwargs["queryset"] = Permission.objects.all().select_related("content_type")
 

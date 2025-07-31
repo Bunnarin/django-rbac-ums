@@ -1,6 +1,5 @@
 from django.db import models
 from django.db.models import Q
-from django.core.exceptions import ValidationError
 from bulk_update_or_create import BulkUpdateOrCreateQuerySet
 from django_jsonform.models.fields import JSONField
 from apps.organization.mixins import OrganizationMixin

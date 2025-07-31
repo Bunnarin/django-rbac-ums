@@ -4,6 +4,7 @@ from django.urls import reverse_lazy
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.forms.models import modelform_factory, inlineformset_factory
+from django_jsonform.widgets import JSONFormWidget
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseBulkDeleteView, BaseImportView
 from apps.core.forms import json_to_schema
 from apps.organization.models import Faculty, Program
@@ -89,7 +90,7 @@ class ScoreScheduleEditView(PermissionRequiredMixin, FormView):
 class EvaluationListView(BaseListView):
     model = Evaluation
     table_fields = ['schedule.course', 'schedule._class', 'schedule.professor', 'response']
-    actions = [('clear all', 'academic:delete_evaluation')]
+    actions = [('clear all', 'academic:delete_evaluation', None)]
 
 class EvaluationCreateView(PermissionRequiredMixin, FormView):
     """
@@ -107,7 +108,9 @@ class EvaluationCreateView(PermissionRequiredMixin, FormView):
 
     def get_form(self):
         question_definition = EvalationTemplate.objects.get().question_definition
-        Form = modelform_factory(Evaluation, fields=['response'], widgets={'response': JSONFormWidget(schema=json_to_schema(question_definition))})
+        Form = modelform_factory(Evaluation, fields=['response'], widgets={
+            'response': JSONFormWidget(schema=json_to_schema(question_definition))
+            })
         return super().get_form(form_class=Form)
     
     def form_valid(self, form):

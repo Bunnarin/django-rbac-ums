@@ -65,11 +65,7 @@ class User(AbstractUser):
             self.groups.add(professor_group)
         elif not creation:
             self.groups.remove(professor_group)
-    
-    def save(self, *args, **kwargs):
-        self.clean()
-        return super().save(*args, **kwargs)
-        
+            
     class Meta:
         verbose_name = "User"
         permissions = [
