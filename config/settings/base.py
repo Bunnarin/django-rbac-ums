@@ -86,9 +86,7 @@ LOGIN_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 ACCOUNT_SIGNUP_REDIRECT_URL = '/' # ez way to disable signup
 ACCOUNT_EMAIL_VERIFICATION = 'none'
-# For phone authentication (requires more setup)
-ACCOUNT_LOGIN_METHODS = ["email", "phone", "username"]
-ACCOUNT_PHONE_VERIFICATION_ENABLED = True
+ACCOUNT_LOGIN_METHODS = ["email", "username"]
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

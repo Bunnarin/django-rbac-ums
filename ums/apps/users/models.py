@@ -1,9 +1,7 @@
 import random
 from django.db import models
 from django.db.models import Q
-from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractUser, Group
-from phonenumber_field.modelfields import PhoneNumberField
 from apps.organization.models import Faculty, Program
 from apps.core.managers import RLSManager
 from .managers import UserRLSManager
@@ -12,10 +10,8 @@ class User(AbstractUser):
     first_name = models.CharField("first name", max_length=30)
     last_name = models.CharField("last name", max_length=30)
     email = models.EmailField("email address", unique=True, blank=True, null=True)
-    phone_number = PhoneNumberField(max_length=16, unique=True, blank=True, null=True)
     faculties = models.ManyToManyField(Faculty, blank = True)
     programs = models.ManyToManyField(Program, blank = True)
-    is_professor = models.BooleanField(default=False)
 
     objects = UserRLSManager()
 
@@ -34,40 +30,26 @@ class User(AbstractUser):
         """
         if self.is_superuser:
             return
+
         creation = not self.pk
+
         if creation:
             self.set_unusable_password()
         
         # check if user exist or not and make the username unique
         self.username = self.first_name + self.last_name
         if creation:
-            if User.objects.filter(username=self.username).exists():
-                self.username += str(random.randint(0, 10))
+            while User.objects.filter(username=self.username).exists():
+                self.username += str(random.randint(0, 9))
         else:
-            if User.objects.filter(username=self.username).exclude(pk=self.pk).exists():
-                self.username += str(random.randint(0, 10))
+            while User.objects.filter(username=self.username).exclude(pk=self.pk).exists():
+                self.username += str(random.randint(0, 9))
 
-        # ensures that we can have the same blank email and phone number
+        # ensures that we can have the same blank email
         if self.email == '':
             self.email = None
-        if self.phone_number == '':
-            self.phone_number = None
-                
-        # ensure that staff status always in staff n prof group
-        staff_group, _ = Group.objects.get_or_create(name="STAFF")
-        if self.is_staff:
-            self.groups.add(staff_group)
-        elif not creation:
-            self.groups.remove(staff_group)
-        
-        professor_group, _ = Group.objects.get_or_create(name="PROFESSOR")
-        if self.is_professor:
-            self.groups.add(professor_group)
-        elif not creation:
-            self.groups.remove(professor_group)
             
     class Meta:
-        verbose_name = "User"
         permissions = [
             ("access_global", "Global Access"),
             ("access_faculty_wide", "Faculty Wide Access"),
@@ -92,22 +74,21 @@ class Student(models.Model):
             self.user.groups.add(student_group)
     
     def save(self, *args, **kwargs):
-        commit = kwargs.pop('commit', None)
         self.clean()
-        if commit == False:
-            return
         super().save()
     
     def delete(self, *args, **kwargs):
-        # remove the user from the student grp
+        """
+        if the user is not in any other group, then delete the user
+        else, remove the student group from the user
+        """
         if self.user.groups.count() == 1:
             # do this to bypass the on_delete protection
             Student._meta.get_field('user').remote_field.on_delete = models.CASCADE
             self.user.delete()
             Student._meta.get_field('user').remote_field.on_delete = models.PROTECT
-        
-        student_group, _ = Group.objects.get_or_create(name="STUDENT")
-        if self.user.pk:
+        else:
+            student_group, _ = Group.objects.get_or_create(name="STUDENT")
             self.user.groups.remove(student_group)
 
         super().delete(*args, **kwargs)

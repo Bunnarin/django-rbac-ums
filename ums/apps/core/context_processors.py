@@ -11,7 +11,10 @@ def organization_data(request):
         return context
     # group
     context['all_groups'] = user.groups.all()
+    # init
     s['permissions'] = s.get('permissions', [])
+    s['selected_faculty'] = s.get('selected_faculty', 'None')
+    s['selected_program'] = s.get('selected_program', 'None')
     # affiliation
     user_faculties = user.faculties.all()
     if 'access_global' in s['permissions']:

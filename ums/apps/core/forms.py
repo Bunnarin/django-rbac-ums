@@ -1,5 +1,3 @@
-from django.forms.formsets import BaseFormSet as DjangoBaseFormSet
-
 def json_to_schema(template_json):
     schema = {
         "type": "object",
@@ -12,6 +10,7 @@ def json_to_schema(template_json):
         "number": "number",
         "checkbox": "array",
     }
+    
     for field in template_json:
         schema['keys'][field['title']] = {}
         key = schema['keys'][field['title']]
@@ -33,21 +32,3 @@ def json_to_schema(template_json):
                     "widget": "multiselect"
                 }
     return schema
-
-class BaseFormSet(DjangoBaseFormSet):
-    """
-    Base formset that makes the request object available to all forms in the formset.
-    The request object should be passed as a kwarg when initializing the formset.
-    """
-    def __init__(self, *args, **kwargs):
-        self.request = kwargs.pop('request', None)
-        super().__init__(*args, **kwargs)
-    
-    def _construct_form(self, i, **kwargs):
-        """
-        Override to pass the request to each form in the formset.
-        """
-        form = super()._construct_form(i, **kwargs)
-        if hasattr(self, 'request') and self.request is not None:
-            form.request = self.request
-        return form

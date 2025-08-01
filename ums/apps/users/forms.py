@@ -1,5 +1,4 @@
 from django import forms
-from django.core.exceptions import ValidationError
 from apps.organization.models import Program, Faculty
 from .models import User, Student
 
@@ -10,14 +9,14 @@ class UserForm(forms.ModelForm):
     """
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'email', 'phone_number', 'faculties', 'programs', 'groups']
+        fields = ['first_name', 'last_name', 'email', 'faculties', 'programs', 'groups']
     
     def __init__(self, *args, request, **kwargs):
         user = request.user
         s = request.session
         super().__init__(*args, **kwargs)
 
-        # filter permissions
+        # filter permissions (this mean that the user creator would need to be in all the group first)
         self.fields['groups'].queryset = user.groups
 
         # filter affiliations
@@ -32,21 +31,27 @@ class UserForm(forms.ModelForm):
             self.fields['programs'].queryset = user.programs
     
     def clean(self):
-        cleaned_data = super().clean()
-        faculties = cleaned_data.get('faculties')
-        programs = cleaned_data.get('programs')
+        data = super().clean()
+        # check affiliation integrity
+        faculties = data.get('faculties')
+        programs = data.get('programs')
         if faculties and programs:
             program_faculties = Faculty.objects.filter(programs__in=programs).distinct()
             missing_faculties = program_faculties.exclude(id__in=[f.id for f in faculties])
             if missing_faculties.exists():
                 self.add_error('programs', f"The selected programs include faculties that are not in the assigned faculties")
-        return cleaned_data
+        
+        # confirm user's intention with creating a new or not when a duplicate name is found
+        if not data['email']:
+            if User.objects.filter(first_name=data['first_name'], last_name=data['last_name']).exclude(pk=self.instance.pk or False).exists():
+                self.add_error('first_name', 'User already exists. Please set an email to create anyway (another user has the same name)')
+        
+        return data
 
 class StudentForm(forms.ModelForm):
     first_name = forms.CharField()
     last_name = forms.CharField()
     email = forms.EmailField(required=False)
-    phone_number = forms.CharField(required=False)
     
     class Meta:
         model = Student
@@ -55,7 +60,7 @@ class StudentForm(forms.ModelForm):
     def save(self, commit=True):
         data = self.cleaned_data
         user = User.objects.create(
-            first_name=data['first_name'], last_name=data['last_name'], email=data['email'], phone_number=data['phone_number']
+            first_name=data['first_name'], last_name=data['last_name'], email=data['email']
             )
         student = super().save(commit=False)
         student.user = user

@@ -1,5 +1,4 @@
 from django import forms
-from django.core.exceptions import ValidationError
 from apps.academic.models import Score, Schedule, Course
 from apps.users.models import User
 
@@ -27,9 +26,11 @@ class ScheduleForm(forms.ModelForm):
     
     class Meta:
         model = Schedule
-        fields = ['course', '_class', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']     
+        fields = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'course']   
 
     def __init__(self, *args, request, **kwargs):
+        self.fields['first_name'] = forms.CharField()
+        self.fields['last_name'] = forms.CharField()
         super().__init__(*args, **kwargs)
         # filter the course choices based on the current affiliation
         self.fields['course'].queryset = Course.objects.get_queryset(request=request)
@@ -41,13 +42,12 @@ class ScheduleForm(forms.ModelForm):
     def clean(self):
         data = self.cleaned_data
         if not User.objects.filter(first_name=data['first_name'], last_name=data['last_name']).exists():
-            print("hiiiiiiiiiiiiiiiiiiii")
-            self.add_error(None, 'Professor does not exist')
+            self.add_error('first_name', f'Professor with the name {data["first_name"]} {data["last_name"]} does not exist')
 
     def save(self, commit=True):
         data = self.cleaned_data
-        prof = User.objects.get(first_name=data['first_name'], last_name=data['last_name'])
         schedule = super().save(commit=False)
+        prof = User.objects.get(first_name=data['first_name'], last_name=data['last_name'])
         schedule.professor = prof
         if commit:
             schedule.save()

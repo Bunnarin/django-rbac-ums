@@ -40,7 +40,7 @@ class ScoreStudentListView(BaseListView):
     def get_queryset(self):
         return Score.objects.filter(student_id=self.kwargs['student_pk']).select_related('course')
 
-class ScoreScheduleEditView(BaseWriteView, FormView):
+class ScoreScheduleCreateView(BaseWriteView, FormView):
     """
     View for bulk creating/updating scores for all students in a class.
     """
@@ -139,7 +139,7 @@ class ClassDeleteView(BaseDeleteView):
 class ClassCreateView(BaseCreateView):
     model = Class
 
-class ClassChangeView(BaseWriteView, InlineFormSetView):
+class ClassUpdateView(BaseWriteView, InlineFormSetView):
     model = Class
     inline_model = Schedule
     form_class = ScheduleForm

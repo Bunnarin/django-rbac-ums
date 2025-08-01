@@ -12,7 +12,6 @@ from django.shortcuts import redirect, render
 from apps.organization.models import Faculty, Program
 from apps.users.managers import UserRLSManager
 from .managers import RLSManager
-from .forms import BaseFormSet
 
 class BaseListView(ListView):
     """
@@ -241,7 +240,7 @@ class BaseImportView(BaseCreateView):
     def post(self, request, *args, **kwargs):
         FormSet_Class = formset_factory(
             self.form_class or modelform_factory(self.model, fields=self.fields),
-            extra=0, formset=BaseFormSet
+            extra=0
         )
         if 'form-TOTAL_FORMS' not in request.POST:
             form = self._get_default_form(request.POST)
@@ -279,7 +278,9 @@ class BaseImportView(BaseCreateView):
                     instance = form.save(commit=False)
                     instance.clean()
                     instances.append(instance)
-                self.model.objects.bulk_create(instances)            
+                self.model.objects.bulk_create(instances)   
+            else:
+                return render(request, self.template_name, {'formset': formset})
         return redirect(f'{self.app_label}:view_{self.model_name}')
 
 @require_POST

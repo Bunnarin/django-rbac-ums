@@ -2,16 +2,15 @@ from django.contrib import admin
 from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
 from allauth.account.models import EmailAddress
-from .models import User, Student
+from .models import User
 
 # Unregister default allauth email admin since we don't need it
 admin.site.unregister(EmailAddress)
-admin.site.register(Student)
 
 # allow only editing in the user admin
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    # fields = ['is_active', 'is_staff']
+    fields = ['is_active', 'is_staff']
     def get_add_permission(self, request):
         return False
     def get_delete_permission(self, request):
@@ -39,7 +38,7 @@ class CustomGroupAdmin(admin.ModelAdmin):
         if db_field.name == "permissions":
             if request and not request.user.is_superuser:
                 user = request.user
-                user_perms_via_groups = user.get_group_permissions()
+                user_perms_via_groups = Permission.objects.filter(group__in=user.groups.all()).distinct()
 
                 extended_permissions_qs = Permission.objects.filter(
                     Q(codename="access_faculty_wide") |

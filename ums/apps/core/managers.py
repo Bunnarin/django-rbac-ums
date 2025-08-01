@@ -1,4 +1,3 @@
-from math import e
 import os
 import inspect
 from django.conf import settings
@@ -23,11 +22,10 @@ class RLSManager(models.Manager):
         super().__init__(*args, **kwargs)
     
     def _is_called_by_me(self):
-        project_root = str(settings.PROJECT_DIR)
         caller_frame = inspect.currentframe().f_back.f_back
         caller_filepath = caller_frame.f_globals['__file__']
         absolute_caller_path = os.path.abspath(caller_filepath)
-        return absolute_caller_path.startswith(project_root)
+        return absolute_caller_path.startswith(str(settings.PROJECT_DIR))
 
     def get_queryset(self, **kwargs):
         if 'request' in kwargs:
@@ -44,8 +42,10 @@ class RLSManager(models.Manager):
             return super().get_queryset()
         
     def _for_request(self, request):
+        # ensure that we defined get_user_rls
+        q = self.model().get_user_rls_filter(request.user)
+
         queryset = super().get_queryset()
-        user = request.user
         s = request.session
 
         if any(perm in s['permissions'] for perm in ['access_global', 'access_faculty_wide', 'access_program_wide']):
@@ -65,6 +65,4 @@ class RLSManager(models.Manager):
             return queryset.filter(**filters)
 
         else:
-            # we don't check if the model has the method or not, we do this to ensure that it's explicity defined
-            q = self.model().get_user_rls_filter(user)
             return queryset.filter(q)

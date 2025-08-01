@@ -7,7 +7,7 @@ EMAIL_USE_TLS = False # Usually no TLS for localhost:25 (unless you configure it
 EMAIL_USE_SSL = False # No SSL either
 DEFAULT_FROM_EMAIL = 'portal@rua.edu.kh' # Email address emails will appear to come from
 SERVER_EMAIL = DEFAULT_FROM_EMAIL # For error reporting by Django
-ALLOWED_HOSTS = ['portal.rua.edu.kh']
+ALLOWED_HOSTS = ['portal.rua.edu.kh', 'localhost', '127.0.0.1']
 
 DATABASES = {
     'default': {

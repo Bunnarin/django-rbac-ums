@@ -4,7 +4,7 @@ from .forms import UserForm, StudentForm
 
 class UserListView(BaseListView):
     model = User
-    table_fields = ['first_name', 'last_name', 'is_professor', 'email', 'phone_number']
+    table_fields = ['first_name', 'last_name', 'email']
     object_actions = [('✏️', 'users:change_user', None), ('🗑️', 'users:delete_user', None)]
     actions = [('+', 'users:add_user', None),
                ('import', 'users:import_user', 'add_user')]
@@ -33,7 +33,7 @@ class UserDeleteView(BaseDeleteView):
 
 class StudentListView(BaseListView):
     model = Student
-    table_fields = ['user.first_name', 'user.last_name', '_class', 'user.email', 'user.phone_number']
+    table_fields = ['user.first_name', 'user.last_name', '_class', 'user.email']
     object_actions = [
         ('✏️', 'users:change_student', None), 
         ('🗑️', 'users:delete_student', None), 
@@ -59,7 +59,6 @@ class StudentUpdateView(StudentCreateView, BaseUpdateView):
             'first_name': user.first_name,
             'last_name': user.last_name,
             'email': user.email,
-            'phone_number': user.phone_number,
             'new_user': False,
         })
         return initial

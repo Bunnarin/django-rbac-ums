@@ -79,6 +79,14 @@
                         {% for field in form.visible_fields %}
                             <td>
                             {{ field }}
+                            {% if field.errors %}
+                                <div class="invalid-feedback d-block">
+                                    <div class="alert alert-danger p-2 mb-0 mt-1" role="alert">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                        {{ field.errors|join:" " }}
+                                    </div>
+                                </div>
+                            {% endif %}
                             </td>
                         {% endfor %}
                         </tr>

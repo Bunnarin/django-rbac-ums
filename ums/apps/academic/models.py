@@ -108,5 +108,8 @@ class Evaluation(models.Model):
 
     class Meta:
         unique_together = ('schedule', 'student')
+
+    def get_user_rls_filter(self, user):
+        return Q(schedule__professor=user)
     
         

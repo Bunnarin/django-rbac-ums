@@ -1,7 +1,5 @@
-# apps/core/middleware.py
 import logging
 from django.shortcuts import redirect
-from django.urls import reverse_lazy
 from django.contrib import messages
 
 logger = logging.getLogger(__name__)
@@ -25,4 +23,4 @@ class GlobalExceptionHandlingMiddleware:
         )
         
         # Redirect to home or error page
-        return redirect('home')  # Change 'home' to your desired error URL
+        return redirect('home')
