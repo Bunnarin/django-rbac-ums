@@ -31,6 +31,7 @@ services:
   nginx:
     build: 
       context: nginx
+      dockerfile: Dockerfile.dev
     volumes:
       - ./staticfiles:/static
     ports:
