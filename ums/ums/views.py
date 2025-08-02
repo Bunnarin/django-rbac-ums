@@ -6,6 +6,9 @@ def home_view(request):
     user = request.user
     if not user.is_authenticated:
         return redirect('account_login')
+    
+    s = request.session
+    s['permissions'] = s.get('permissions', [])
 
     accessible_models_by_app = {}
 
@@ -33,11 +36,11 @@ def home_view(request):
             verbose_name_plural = verbose_name_plural.title()
 
             has_rud_access = False
-            if any(perm in request.session['permissions'] for perm in [f'change_{model_name}', f'delete_{model_name}', f'view_{model_name}']):
+            if any(perm in s['permissions'] for perm in [f'change_{model_name}', f'delete_{model_name}', f'view_{model_name}']):
                 has_rud_access = True
 
             has_add_access = False
-            if f'add_{model_name}' in request.session['permissions']:
+            if f'add_{model_name}' in s['permissions']:
                 has_add_access = True
 
             # Initialize app section if it doesn't exist

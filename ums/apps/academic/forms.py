@@ -51,15 +51,12 @@ class ScheduleForm(forms.ModelForm):
             # add an email field to filter the professor
             self.fields['email'].widget = forms.EmailInput()
             self.add_error('email', f'Multiple professors with the same name found. Please specify an email')
-        # manually inject the schedule if because the formset won't do it for some reason
-        schedule, _ = Schedule.objects.get_or_create(_class=data['_class'], course=data['course'], professor=data['professor'])
-        data['id'] = schedule.id
-        print(schedule.id)
+
         return data
 
     def save(self, commit=True):
         data = self.cleaned_data
-        self.instance = self.save(commit=False)
+        self.instance = super().save(commit=False)
         self.instance.professor = data['professor']
         if commit:
             self.instance.save()

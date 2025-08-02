@@ -10,7 +10,8 @@ class Command(BaseCommand):
         existing_admin = User.objects.filter(Q(username=config('SUPERUSER_USERNAME')) | Q(email=config('SUPERUSER_EMAIL'))).first()
         if(existing_admin is None):
             User.objects.create_superuser(
-                username=config('SUPERUSER_USERNAME'),
+                first_name=config('SUPERUSER_USERNAME'),
+                last_name=config('SUPERUSER_USERNAME'),
                 email=config('SUPERUSER_EMAIL'),
                 password=config('SUPERUSER_PASSWORD')
             )
