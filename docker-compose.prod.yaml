@@ -50,6 +50,11 @@ services:
      - app-network
    depends_on:
      - django_gunicorn
+   healthcheck:
+     test: ["CMD", "wget", "-q", "--spider", "http://localhost"]
+     interval: 5s
+     timeout: 3s
+     retries: 5
  
  certbot:
    build: ./certbot
@@ -62,7 +67,8 @@ services:
    networks:
      - app-network
    depends_on:
-     - nginx
+      nginx:
+        condition: service_healthy
 
 volumes:
  static:
