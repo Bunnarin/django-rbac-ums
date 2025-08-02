@@ -65,7 +65,12 @@
                     <strong>{{ formset.prefix }}</strong>
                     {{ formset.management_form }}
                     {{ formset.media }}
-                <table class="table">
+                    {% if formset.errors %}
+                    <div class="invalid-feedback d-block">
+                        {{ formset.errors|join:" " }}
+                    </div>
+                    {% endif %}
+                <table class="table" style="table-layout: fixed;">
                     {% for form in formset %}
                         {% if forloop.first %}
                         <tr>
@@ -81,15 +86,15 @@
                             {{ field }}
                             {% if field.errors %}
                                 <div class="invalid-feedback d-block">
-                                    <div class="alert alert-danger p-2 mb-0 mt-1" role="alert">
-                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                                        {{ field.errors|join:" " }}
-                                    </div>
+                                    {{ field.errors|join:" " }}
                                 </div>
                             {% endif %}
                             </td>
                         {% endfor %}
                         </tr>
+                        {% for hidden in form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
                     {% endfor %}
                 </table>
                 {% endif %}

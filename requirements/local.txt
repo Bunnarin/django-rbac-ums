@@ -1,6 +1,6 @@
 -r base.txt
 
 coverage==5.1
-django-debug-toolbar==2.2
+django-debug-toolbar==6.0.0
 interrogate==1.7.0
 pytest-django==4.11.1

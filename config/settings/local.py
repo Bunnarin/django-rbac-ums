@@ -18,6 +18,16 @@ DATABASES = {
     }
 }
 
+INSTALLED_APPS += ['debug_toolbar']
+
+# insert at the top
+MIDDLEWARE = ['debug_toolbar.middleware.DebugToolbarMiddleware'] + MIDDLEWARE
+
+INTERNAL_IPS = [
+    '127.0.0.1',
+    'localhost',
+]
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

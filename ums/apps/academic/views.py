@@ -8,7 +8,7 @@ from extra_views import InlineFormSetView
 from apps.core.views import BaseListView, BaseCreateView, BaseUpdateView, BaseDeleteView, BaseBulkDeleteView, BaseWriteView
 from apps.core.forms import json_to_schema
 from apps.users.models import Student
-from .models import Course, Class, Schedule, Score, Evaluation, EvalationTemplate
+from .models import Course, Class, Schedule, Score, Evaluation, EvaluationTemplate
 from .forms import create_score_form_class, ScheduleForm
 
 class CourseListView(BaseListView):
@@ -40,11 +40,13 @@ class ScoreStudentListView(BaseListView):
     def get_queryset(self):
         return Score.objects.filter(student_id=self.kwargs['student_pk']).select_related('course')
 
-class ScoreScheduleCreateView(BaseWriteView, FormView):
+class ScoreScheduleCreateView(FormView, BaseWriteView):
     """
     View for bulk creating/updating scores for all students in a class.
     """
+    model = Score
     permission_required = [('add', 'score')]
+    template_name = 'core/generic_form.html'
     success_url = reverse_lazy('academic:view_schedule')
 
     def get_form(self):
@@ -90,10 +92,11 @@ class EvaluationListView(BaseListView):
     table_fields = ['schedule.course', 'schedule._class', 'schedule.professor', 'response']
     actions = [('clear all', 'academic:delete_evaluation', None)]
 
-class EvaluationCreateView(BaseWriteView, FormView):
+class EvaluationCreateView(FormView, BaseWriteView):
     """
     View for creating/updating an evaluation for a schedule.
     """
+    template_name = 'core/generic_form.html'
     permission_required = [('add', 'evaluation')]
     success_url = reverse_lazy('academic:view_schedule')
 
@@ -104,20 +107,19 @@ class EvaluationCreateView(BaseWriteView, FormView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_form(self):
-        question_definition = EvalationTemplate.objects.get().question_definition
+        question_definition = EvaluationTemplate.objects.get().question_definition
         Form = modelform_factory(Evaluation, fields=['response'], widgets={
             'response': JSONFormWidget(schema=json_to_schema(question_definition))
             })
         return super().get_form(form_class=Form)
     
     def form_valid(self, form):
-        if form.is_valid():
-            schedule = Schedule.objects.select_related('_class').get(pk=self.kwargs['schedule_pk'])
-            Evaluation.objects.create(
-                schedule=schedule, 
-                student=Student.objects.get(user=self.request.user, _class=schedule._class), 
-                response=form.cleaned_data['response']
-                )
+        schedule = Schedule.objects.select_related('_class').get(pk=self.kwargs['schedule_pk'])
+        Evaluation.objects.create(
+            schedule=schedule, 
+            student=Student.objects.get(user=self.request.user, _class=schedule._class), 
+            response=form.cleaned_data['response']
+            )
         return super().form_valid(form)
 
 class EvaluationBulkDeleteView(BaseBulkDeleteView):
@@ -144,7 +146,7 @@ class ClassUpdateView(BaseWriteView, InlineFormSetView):
     inline_model = Schedule
     form_class = ScheduleForm
     factory_kwargs = {'extra': 1, 'can_delete': True}
-    fields = ['course', '_class', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']     
+    fields = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'course', '_class']     
     success_url = reverse_lazy('academic:view_class')
     template_name = 'core/generic_form.html'
     permission_required = [('change', None)]
@@ -156,8 +158,8 @@ class ClassUpdateView(BaseWriteView, InlineFormSetView):
     
     def formset_valid(self, formset):
         for data in formset.cleaned_data:
-            if data['DELETE']:
+            if data.get('DELETE') == True:
                 Schedule.objects.get(
-                    course=data['course'], _class=data['_class'], professor__first_name=data['first_name'], professor__last_name=data['last_name']
-                    ).delete()
+                    course=data['course'], _class=data['_class'], professor=data['professor']
+                ).delete()
         return super().formset_valid(formset)

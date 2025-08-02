@@ -78,103 +78,113 @@
         });
     });
 </script>
+
+<!-- code for sheetjs -->
 <script>
-    // Enhanced export functionality
     function exportTable() {
         // Get the main table data
         const table = document.getElementById('data-table');
         const wb = XLSX.utils.table_to_book(table, {sheet: 'Main Data', raw: true});
         
-        // Find all JSON columns and group them by schema
-        const jsonSheets = {};
-        const headers = Array.from(table.rows[0].cells).map(cell => cell.textContent.trim());
+        // First pass: Collect all rows and identify JSON schemas
+        const allRows = [];
+        const schemaMap = new Map(); // Maps schema key to {headers, rowIndices, schemaId}
+        let schemaCounter = 1;
         
-        // Get all rows (skip header row)
+        const headers = Array.from(table.rows[0].cells).map(cell => cell.textContent.trim());
         const rows = Array.from(table.querySelectorAll('tr')).slice(1);
         
-        // Process each cell to find JSON data
         rows.forEach((row, rowIndex) => {
-            const rowData = {};
             const cells = row.querySelectorAll('td');
+            const rowData = {};
+            const rowJsonData = {};
+            let hasJson = false;
+            let schemaKey = '';
             
-            // First collect all cell data for this row
+            // First collect all regular cell data
             cells.forEach((cell, colIndex) => {
-                if (colIndex < headers.length) {  // Make sure we don't go out of bounds
-                    rowData[headers[colIndex]] = cell.textContent.trim();
-                }
-            });
-            
-            // Now check each cell for JSON data
-            cells.forEach((cell, colIndex) => {
-                if (colIndex >= headers.length) return;  // Skip if no header
-                
-                const text = cell.textContent.trim();
-                if (text.startsWith('{') && text.endsWith('}')) {
-                    try {
-                        const jsonData = JSON.parse(text.replace(/'/g, '"'));
-                        
-                        // Create a schema key based on the JSON object's keys
-                        const schemaKey = JSON.stringify(Object.keys(jsonData).sort());
-                        
-                        if (!jsonSheets[schemaKey]) {
-                            // Initialize this schema's sheet data
-                            jsonSheets[schemaKey] = {
-                                name: `${headers[colIndex]} Data`,
-                                headers: [...headers, ...Object.keys(jsonData).filter(k => !headers.includes(k))],
-                                data: []
-                            };
+                if (colIndex < headers.length) {
+                    const text = cell.textContent.trim();
+                    rowData[headers[colIndex]] = text;
+                    
+                    // Check if cell contains JSON
+                    if (text.startsWith('{') && text.endsWith('}')) {
+                        try {
+                            const jsonData = JSON.parse(text.replace(/'/g, '"'));
+                            hasJson = true;
+                            
+                            // Create schema key from sorted JSON keys
+                            const jsonKeys = Object.keys(jsonData).sort();
+                            schemaKey = jsonKeys.join('|');
+                            
+                            // Store JSON data for this row
+                            rowJsonData[headers[colIndex]] = jsonData;
+                            
+                            // Track all unique fields for this schema
+                            if (!schemaMap.has(schemaKey)) {
+                                schemaMap.set(schemaKey, {
+                                    headers: new Set([...headers, ...jsonKeys]),
+                                    rows: [],
+                                    id: schemaCounter++  // Assign sequential ID
+                                });
+                            }
+                            
+                            // Add this row's JSON fields to the schema headers
+                            jsonKeys.forEach(key => schemaMap.get(schemaKey).headers.add(key));
+                            
+                        } catch (e) {
+                            console.log('Error parsing JSON:', e);
                         }
-                        
-                        // Create a copy of the row data
-                        const expandedRow = {...rowData};
-                        
-                        // Add the JSON data, overwriting any existing fields
-                        Object.entries(jsonData).forEach(([key, value]) => {
-                            expandedRow[key] = typeof value === 'object' ? JSON.stringify(value) : value;
-                        });
-                        
-                        jsonSheets[schemaKey].data.push(expandedRow);
-                    } catch (e) {
-                        console.log('Error processing JSON data:', e);
                     }
                 }
             });
+            
+            // Store the row data and its schema information
+            allRows.push({
+                data: rowData,
+                jsonData: rowJsonData,
+                schemaKey: hasJson ? schemaKey : null
+            });
+            
+            // Add row index to appropriate schema group
+            if (hasJson && schemaKey) {
+                schemaMap.get(schemaKey).rows.push(rowIndex);
+            }
         });
         
-        // Add JSON sheets to the workbook
-        Object.values(jsonSheets).forEach((sheetData) => {
-            // Convert data to worksheet
-            const ws = XLSX.utils.json_to_sheet(sheetData.data, {
-                header: [...new Set(sheetData.headers)]  // Remove duplicates
+        // Create a worksheet for each schema
+        schemaMap.forEach((schemaData, schemaKey) => {
+            const sheetName = `Schema ${schemaData.id}`;
+            const allHeaders = Array.from(schemaData.headers);
+            const sheetRows = [];
+            
+            // Process each row that matches this schema
+            schemaData.rows.forEach(rowIndex => {
+                const row = allRows[rowIndex];
+                const sheetRow = {};
+                
+                // Add all regular fields
+                Object.entries(row.data).forEach(([key, value]) => {
+                    sheetRow[key] = value;
+                });
+                
+                // Add JSON fields, overriding regular fields if needed
+                Object.values(row.jsonData).forEach(jsonData => {
+                    Object.entries(jsonData).forEach(([key, value]) => {
+                        sheetRow[key] = typeof value === 'object' ? JSON.stringify(value) : value;
+                    });
+                });
+                
+                sheetRows.push(sheetRow);
             });
             
-            // Hide the _main_row column
-            const mainRowColIndex = sheetData.headers.indexOf('_main_row');
-            if (mainRowColIndex !== -1) {
-                if (!ws['!cols']) ws['!cols'] = [];
-                ws['!cols'][mainRowColIndex] = { hidden: true };
-            }
+            // Create worksheet with all headers
+            const ws = XLSX.utils.json_to_sheet(sheetRows, {
+                header: allHeaders
+            });
             
             // Add worksheet to workbook
-            XLSX.utils.book_append_sheet(wb, ws, sheetData.name.substring(0, 31)); // Sheet name max 31 chars
-            
-            // Add hyperlinks back to main data
-            if (mainRowColIndex !== -1) {
-                const range = XLSX.utils.decode_range(ws['!ref']);
-                for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-                    const cell = XLSX.utils.encode_cell({r: R, c: mainRowColIndex});
-                    const rowNum = ws[cell]?.v;
-                    if (rowNum) {
-                        // Add hyperlink to first cell
-                        const firstCell = XLSX.utils.encode_cell({r: R, c: 0});
-                        ws[firstCell].l = {
-                            Target: `#Main Data!A${rowNum}`,
-                            Tooltip: `Go to main row ${rowNum}`
-                        };
-                        ws[firstCell].s = {font: {color: {rgb: '0563C1'}, underline: true}};
-                    }
-                }
-            }
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
         });
         
         // Save the workbook

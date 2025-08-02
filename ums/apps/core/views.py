@@ -97,6 +97,7 @@ class BaseWriteView():
     fields = '__all__'
     template_name = 'core/generic_form.html'
     permission_required = []
+    success_url = None
 
     def dispatch(self, request, *args, **kwargs):
         self.app_label = self.model._meta.app_label
@@ -109,6 +110,8 @@ class BaseWriteView():
         return super().dispatch(request, *args, **kwargs)
     
     def get_success_url(self):
+        if self.success_url:
+            return self.success_url
         return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
     
     def get_context_data(self, **kwargs):
@@ -240,7 +243,7 @@ class BaseImportView(BaseCreateView):
     def post(self, request, *args, **kwargs):
         FormSet_Class = formset_factory(
             self.form_class or modelform_factory(self.model, fields=self.fields),
-            extra=0
+            extra=0, can_delete=True
         )
         if 'form-TOTAL_FORMS' not in request.POST:
             form = self._get_default_form(request.POST)
@@ -266,6 +269,7 @@ class BaseImportView(BaseCreateView):
                             initials[i][field] = data[field][0]
                         else:
                             initials[i][field] = data[field]
+
                 formset = FormSet_Class(initial=initials, form_kwargs={'request': request})
                 return render(request, self.template_name, {'formset': formset})
             return render(request, self.template_name, {'form': form})
@@ -279,8 +283,7 @@ class BaseImportView(BaseCreateView):
                     instance.clean()
                     instances.append(instance)
                 self.model.objects.bulk_create(instances)   
-            else:
-                return render(request, self.template_name, {'formset': formset})
+            return render(request, self.template_name, {'formset': formset})
         return redirect(f'{self.app_label}:view_{self.model_name}')
 
 @require_POST
@@ -296,7 +299,7 @@ def set_faculty(request):
     else:
         faculty_id = int(faculty_id)
         user = request.user
-        authorized = 'users.access_global' in s['permissions']
+        authorized = 'access_global' in s['permissions']
         if not authorized and faculty_id not in user.faculties.values_list('id', flat=True):
             return JsonResponse({'error': 'Unauthorized faculty'}, status=403)
         s['selected_faculty'] = faculty_id
@@ -322,8 +325,7 @@ def set_program(request):
     else:
         program_id = int(program_id)
         user = request.user
-        authorized = 'users.access_global' in s['permissions'] or \
-            'users.access_faculty_wide' in s['permissions']
+        authorized = 'access_global' in s['permissions'] or 'access_faculty_wide' in s['permissions']
         if not authorized and program_id not in user.programs.values_list('id', flat=True):
             return JsonResponse({'error': 'Unauthorized program'}, status=403)
         s['selected_program'] = program_id

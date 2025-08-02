@@ -41,11 +41,6 @@ class UserForm(forms.ModelForm):
             if missing_faculties.exists():
                 self.add_error('programs', f"The selected programs include faculties that are not in the assigned faculties")
         
-        # confirm user's intention with creating a new or not when a duplicate name is found
-        if not data['email']:
-            if User.objects.filter(first_name=data['first_name'], last_name=data['last_name']).exclude(pk=self.instance.pk or False).exists():
-                self.add_error('first_name', 'User already exists. Please set an email to create anyway (another user has the same name)')
-        
         return data
 
 class StudentForm(forms.ModelForm):

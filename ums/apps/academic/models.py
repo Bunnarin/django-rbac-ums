@@ -41,13 +41,13 @@ class Schedule(models.Model):
     professor = models.ForeignKey(User, on_delete=models.PROTECT)
     course = models.ForeignKey(Course, on_delete=models.PROTECT)
     _class = models.ForeignKey(Class, on_delete=models.CASCADE, related_name="schedules")
-    monday = models.CharField(max_length=13, null=True, blank=True)
-    tuesday = models.CharField(max_length=13, null=True, blank=True)
-    wednesday = models.CharField(max_length=13, null=True, blank=True)
-    thursday = models.CharField(max_length=13, null=True, blank=True)
-    friday = models.CharField(max_length=13, null=True, blank=True)
-    saturday = models.CharField(max_length=13, null=True, blank=True)
-    sunday = models.CharField(max_length=13, null=True, blank=True)
+    mon = models.CharField(max_length=13, null=True, blank=True)
+    tue = models.CharField(max_length=13, null=True, blank=True)
+    wed = models.CharField(max_length=13, null=True, blank=True)
+    thu = models.CharField(max_length=13, null=True, blank=True)
+    fri = models.CharField(max_length=13, null=True, blank=True)
+    sat = models.CharField(max_length=13, null=True, blank=True)
+    sun = models.CharField(max_length=13, null=True, blank=True)
 
     objects = RLSManager(field_with_affiliation="course")
 
@@ -70,7 +70,7 @@ class Score(models.Model):
     class Meta:
         unique_together = ('student', 'course')
 
-class EvalationTemplate(models.Model):
+class EvaluationTemplate(models.Model):
     """
     This is a singleton model
     """
@@ -98,6 +98,10 @@ class EvalationTemplate(models.Model):
         }
     }
     question_definition = JSONField(schema=TEMPLATE_SCHEMA)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
 
 class Evaluation(models.Model):
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)

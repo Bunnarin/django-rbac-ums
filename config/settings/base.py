@@ -38,8 +38,9 @@ INSTALLED_APPS = [
     # extensions
     'django_jsonform',
     'crispy_forms',
-    'crispy_bootstrap4',
+    'crispy_bootstrap5',
     'bulk_update_or_create',
+    'cachalot',
     # custom apps
     'apps.core',
     'apps.academic',
@@ -49,6 +50,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # 'django.middleware.cache.UpdateCacheMiddleware',
     'apps.core.middleware.GlobalExceptionHandlingMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -58,6 +60,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 'django.middleware.cache.FetchFromCacheMiddleware',
 ]
 
 ROOT_URLCONF = 'ums.urls'
@@ -79,6 +82,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'ums.wsgi.application'
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "my_cache_table",
+    }
+}
 
 #django-allauth settings
 
@@ -133,7 +143,7 @@ STATICFILES_DIRS = [PROJECT_DIR / 'static'] # no idea why this is like this
 
 
 # Crispy forms configuration
-CRISPY_TEMPLATE_PACK = "bootstrap4"
+CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

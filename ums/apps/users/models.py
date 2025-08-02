@@ -9,7 +9,7 @@ from .managers import UserRLSManager
 class User(AbstractUser):
     first_name = models.CharField("first name", max_length=30)
     last_name = models.CharField("last name", max_length=30)
-    email = models.EmailField("email address", unique=True, blank=True, null=True)
+    email = models.EmailField("email address", unique=True)
     faculties = models.ManyToManyField(Faculty, blank = True)
     programs = models.ManyToManyField(Program, blank = True)
 
@@ -44,10 +44,6 @@ class User(AbstractUser):
         else:
             while User.objects.filter(username=self.username).exclude(pk=self.pk).exists():
                 self.username += str(random.randint(0, 9))
-
-        # ensures that we can have the same blank email
-        if self.email == '':
-            self.email = None
             
     class Meta:
         permissions = [
