@@ -46,6 +46,8 @@ services:
    ports:
      - "80:80"
      - "443:443"
+   networks:
+     - app-network
    depends_on:
      - django_gunicorn
  
@@ -57,12 +59,18 @@ services:
    volumes:
      - certbot-web:/vol/www
      - certbot-certs:/etc/letsencrypt/
+   networks:
+     - app-network
    depends_on:
      - nginx
 
 volumes:
  static:
+ media:
  postgresql-db:
  certbot-web:
  certbot-certs:
  nginx-ssl-conf:
+networks:
+  app-network:
+    driver: bridge
