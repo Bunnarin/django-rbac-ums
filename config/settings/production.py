@@ -1,12 +1,14 @@
 from .base import *
+from decouple import config
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'localhost'
-EMAIL_PORT = 25 # Standard SMTP port
-EMAIL_USE_TLS = False # Usually no TLS for localhost:25 (unless you configure it)
-EMAIL_USE_SSL = False # No SSL either
-DEFAULT_FROM_EMAIL = 'portal@rua.edu.kh' # Email address emails will appear to come from
-SERVER_EMAIL = DEFAULT_FROM_EMAIL # For error reporting by Django
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True 
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
 ALLOWED_HOSTS = ['camfood.in']
 
 DATABASES = {
