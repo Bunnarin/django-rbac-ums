@@ -17,7 +17,7 @@ def home_view(request):
         'auth',        # Django Authentication (User, Group, Permission models)
         'contenttypes',# Django ContentTypes
         'sessions',    # Django Sessions
-        'staticfiles', # Django StaticFiles
+        'static', # Django static
     ]
 
     # Iterate through all installed apps
