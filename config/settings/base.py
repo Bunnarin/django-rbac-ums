@@ -140,7 +140,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'static'
-static_DIRS = [PROJECT_DIR / 'static'] # no idea why this is like this
+STATICFILES_DIRS = [PROJECT_DIR / 'static'] # no idea why this is like this
 
 
 # Crispy forms configuration

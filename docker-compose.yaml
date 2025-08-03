@@ -41,8 +41,8 @@ services:
    env_file:
      - ./.env
    volumes:
-     - ./static:/app/static
-     - ./media:/app/media
+     - ./static:/static
+     - ./media:/media
      - certbot-web:/vol/www
      - certbot-certs:/etc/letsencrypt
      - nginx-ssl-conf:/vol/nginx_ssl_conf

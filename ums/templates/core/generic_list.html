@@ -1,6 +1,15 @@
 {% extends 'base.html' %}
 {% load core_tags %}
 
+{% block extra_head %}
+<!-- for sheetjs -->
+<script type="text/javascript" src="https://cdn.sheetjs.com/xlsx-latest/package/dist/shim.min.js"></script>
+<script type="text/javascript" src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<!-- for datatable -->
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.0.8/css/dataTables.dataTables.min.css">
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
+{% endblock %}
+
 {% block content %}
     <div class="mb-3">
         {% for action, url in actions.items %}
