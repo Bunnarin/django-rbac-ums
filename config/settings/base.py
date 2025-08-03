@@ -155,6 +155,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUDITLOG_INCLUDE_ALL_MODELS = True
 AUDITLOG_EXCLUDE_TRACKING_MODELS = (
     "activities",
+    "organization",
+    "academic.evaluationtemplate",
+    "academic.evaluation",
+    "academic.course",
 )
 
 # crontab
