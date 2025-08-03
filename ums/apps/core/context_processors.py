@@ -10,6 +10,7 @@ def organization_data(request):
     user = request.user
     if not user.is_authenticated:
         return context
+
     # group
     context['all_groups'] = user.groups.all()
     # if user.groups is not empty, we choose the first one

@@ -18,17 +18,17 @@
     <script>
         $(document).ready(function() {
             {% with request.session as s %}
-                {% if s.selected_group and not s.selected_faculty and all_faculties %}
+                {% if s.selected_group and not s.selected_faculty %}
                 // select the 2nd choice if exist
                     $('#faculty-form').find('option:eq(1)').prop('selected', true);
                     $('#faculty-form').submit();
                 {% endif %}
-                {% if s.selected_group and not s.selected_program and s.selected_faculty and all_programs %}
+                {% if s.selected_group and not s.selected_program and s.selected_faculty %}
                 // select the 2nd choice if exist
                     $('#program-form').find('option:eq(1)').prop('selected', true);
                     $('#program-form').submit();
                 {% endif %}
-                {% if not s.selected_group and all_groups %}
+                {% if not s.selected_group %}
                 // select the 2nd choice if exist
                     $('#group-form').find('option:eq(1)').prop('selected', true);
                     $('#group-form').submit();
@@ -41,7 +41,7 @@
 <body>
     <!-- navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container-fluid">
+        <div class="container-fluid gap-2">
             <!-- Logo on the left -->
             <a class="navbar-brand me-auto" href="/">
                 <img src="{% static 'image/logo.png' %}" style="height: 40px; width: auto;" class="me-2">
@@ -49,9 +49,8 @@
             </a>
     
             <!-- Navigation items on the right -->
-            <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center gap-1">
                 <!-- Faculty and Program selects -->
-                <div class="d-flex gap-2">
                     {% with request.session as s %}
                     <form method="POST" action="{% url 'core:set_faculty' %}" id="faculty-form">
                         {% csrf_token %}
@@ -94,8 +93,8 @@
                         </select>
                     </form>
                     {% endwith %}
-                </div>
-    
+            </div>
+            <div class="d-flex align-items-center gap-2">
                 <!-- Admin link if staff -->
                 {% if user.is_staff %}
                     <a class="nav-link text-white" href="/admin/">Admin</a>

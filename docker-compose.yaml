@@ -55,7 +55,7 @@ services:
  certbot:
    build: ./certbot
    environment:
-     EMAIL: ${PROD_CERTBOT_EMAIL}
+     EMAIL: ${SUPERUSER_EMAIL}
      DOMAIN: ${DOMAIN}
    volumes:
      - certbot-web:/vol/www
