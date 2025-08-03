@@ -11,8 +11,9 @@ class Command(BaseCommand):
         existing_admin = User.objects.filter(Q(username=config('SUPERUSER_USERNAME')) | Q(email=config('SUPERUSER_EMAIL'))).first()
         if(existing_admin is None):
             admin_grp, _ = Group.objects.get_or_create(name="ADMIN")
-            User.objects.create_superuser(
+            admin = User.objects.create_superuser(
                 username=config('SUPERUSER_USERNAME'),
                 email=config('SUPERUSER_EMAIL'),
-                groups=[admin_grp]
             )
+            admin.groups.set([admin_grp])
+            admin.save()            
