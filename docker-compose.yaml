@@ -40,8 +40,6 @@ services:
     dockerfile: Dockerfile.prod
    env_file:
      - ./.env
-   environment:
-     DOMAIN: ${PROD_ALLOWED_HOST}
    volumes:
      - static:/static
      - media:/media
