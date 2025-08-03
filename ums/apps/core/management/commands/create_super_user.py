@@ -8,11 +8,11 @@ User = get_user_model()
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
-        existing_admin = User.objects.filter(Q(username=config('SUPERUSER_USERNAME')) | Q(email=config('SUPERUSER_EMAIL'))).first()
+        existing_admin = User.objects.filter(Q(username="admin") | Q(email=config('SUPERUSER_EMAIL'))).first()
         if(existing_admin is None):
             admin_grp, _ = Group.objects.get_or_create(name="ADMIN")
             admin = User.objects.create_superuser(
-                username=config('SUPERUSER_USERNAME'),
+                username="admin",
                 email=config('SUPERUSER_EMAIL'),
             )
             admin.groups.set([admin_grp])
