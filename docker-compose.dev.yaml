@@ -33,7 +33,7 @@ services:
       context: nginx
       dockerfile: Dockerfile.dev
     volumes:
-      - ../static:/static
+      - ./static:/static
     ports:
       - "80:80"
     depends_on:
