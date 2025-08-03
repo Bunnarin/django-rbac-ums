@@ -23,8 +23,8 @@ services:
  django_gunicorn:
    build: ./
    volumes:
-     - static:/app/staticfiles
-     - media:/app/media
+     - ./staticfiles:/app/staticfiles
+     - ./media:/app/media
    env_file:
      - ./.env
    ports:
@@ -41,8 +41,8 @@ services:
    env_file:
      - ./.env
    volumes:
-     - static:/static
-     - media:/media
+     - ./staticfiles:/static
+     - ./media:/media
      - certbot-web:/vol/www
      - certbot-certs:/etc/letsencrypt
      - nginx-ssl-conf:/vol/nginx_ssl_conf
@@ -65,9 +65,7 @@ services:
    restart: unless-stopped
 
 volumes:
- static:
  postgresql-db:
  certbot-web:
  certbot-certs:
  nginx-ssl-conf:
- media:
