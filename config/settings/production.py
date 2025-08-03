@@ -9,7 +9,7 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-ALLOWED_HOSTS = [config('DOMAIN'), 'www.'+config('DOMAIN'), config('VM_IP')]
+ALLOWED_HOSTS = [config('DOMAIN'), 'www.'+config('DOMAIN')]
 
 DATABASES = {
     'default': {

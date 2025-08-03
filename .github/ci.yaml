@@ -33,7 +33,6 @@ jobs:
           echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
           echo 'DJANGO_SETTINGS_MODULE=${{ vars.DJANGO_SETTINGS_MODULE }}' >> .env
           echo 'SUPERUSER_EMAIL=${{ secrets.SUPERUSER_EMAIL }}' >> .env
-          echo 'SUPERUSER_USERNAME=${{ secrets.SUPERUSER_USERNAME }}' >> .env
 
       - name: Build and bring up services
         run: |
