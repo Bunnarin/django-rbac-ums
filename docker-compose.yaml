@@ -18,6 +18,7 @@ services:
      interval: 10s
      timeout: 5s
      retries: 5
+   restart: unless-stopped
 
  django_gunicorn:
    build: ./
@@ -28,6 +29,7 @@ services:
      - ./.env
    ports:
      - "8000:8000"
+   restart: unless-stopped
    depends_on:
      postgresql:
        condition: service_healthy
@@ -49,18 +51,19 @@ services:
    ports:
      - "80:80"
      - "443:443"
+   restart: unless-stopped
    depends_on:
      - django_gunicorn
  certbot:
    build: ./certbot
    environment:
      EMAIL: ${PROD_CERTBOT_EMAIL}
-     DOMAIN: ${PROD_ALLOWED_HOST}
    volumes:
      - certbot-web:/vol/www
      - certbot-certs:/etc/letsencrypt/
    depends_on:
      - nginx
+   restart: unless-stopped
 
 volumes:
  static:
