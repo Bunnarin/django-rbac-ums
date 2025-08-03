@@ -22,8 +22,14 @@ DATABASES = {
     }
 }
 
-SECURE_SSL_REDIRECT = True
+# SECURE_HSTS_SECONDS = 3600
+# SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
-SECURE_HSTS_SECONDS = 3600
-SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Required for when you are behind a reverse proxy like Nginx that handles SSL.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# This setting makes Django use the X-Forwarded-Host header to get the
+# correct public domain name when constructing absolute URLs
+USE_X_FORWARDED_HOST = True
