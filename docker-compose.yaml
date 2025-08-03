@@ -14,7 +14,7 @@ services:
      POSTGRES_USER: ${DB_USER}
      POSTGRES_PASSWORD: ${DB_PASSWORD}
    healthcheck:
-     test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+     test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
      interval: 10s
      timeout: 5s
      retries: 5
@@ -39,7 +39,7 @@ services:
    env_file:
      - ./.env
    environment:
-     - DOMAIN=${PROD_ALLOWED_HOST}
+     DOMAIN: ${PROD_ALLOWED_HOST}
    volumes:
      - static:/static
      - media:/media
@@ -51,12 +51,11 @@ services:
      - "443:443"
    depends_on:
      - django_gunicorn
- 
  certbot:
    build: ./certbot
    environment:
-     - EMAIL=${PROD_CERTBOT_EMAIL}
-     - DOMAIN=${PROD_ALLOWED_HOST}
+     EMAIL: ${PROD_CERTBOT_EMAIL}
+     DOMAIN: ${PROD_ALLOWED_HOST}
    volumes:
      - certbot-web:/vol/www
      - certbot-certs:/etc/letsencrypt/
