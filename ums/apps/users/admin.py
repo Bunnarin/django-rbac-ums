@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.models import Group, Permission
 from django.db.models import Q
 from allauth.account.models import EmailAddress
-from .models import User
+from .queryset import GroupQuerySet
 
 # Unregister default allauth email admin since we don't need it
 admin.site.unregister(EmailAddress)
@@ -15,19 +15,9 @@ class CustomGroupAdmin(admin.ModelAdmin):
     - Permission filtering based on user's own permissions to ensure SECURITY
     - Extended permissions for users with faculty-wide or global access
     """
-    search_fields = ("name",)
-    ordering = ("name",)
-    filter_horizontal = ("permissions",)
-
-    def get_change_permissions(self, request):
-        if request.user.is_superuser:
-            return True
-        return False
-        
-    def get_delete_permission(self, request):
-        if request.user.is_superuser:
-            return True
-        return False
+    
+    def get_queryset(self, request):
+        return GroupQuerySet(Group).for_user(request.user)
 
     def formfield_for_manytomany(self, db_field, request=None, **kwargs):
         """
@@ -36,17 +26,16 @@ class CustomGroupAdmin(admin.ModelAdmin):
         if db_field.name == "permissions":
             if request and not request.user.is_superuser:
                 user = request.user
-                user_perms_via_groups = Permission.objects.filter(group__in=user.groups.all()).distinct()
+                available_perms = Permission.objects.filter(group__in=user.groups.all()).distinct()
 
-                extended_permissions_qs = Permission.objects.filter(
-                    Q(codename="access_faculty_wide") |
-                    Q(codename="access_program_wide")
-                ).distinct()
+                if user.has_perm("users.access_global") or user.has_perm("users.access_faculty_wide"):
+                    extended_permissions_qs = Permission.objects.filter(
+                        Q(codename="access_faculty_wide") |
+                        Q(codename="access_program_wide")
+                    ).distinct()
+                    available_perms = (available_perms | extended_permissions_qs).distinct()
 
-                if any(perm for perm in request.session['permissions'] if perm in ["access_global", "access_faculty_wide"]):
-                    user_perms_via_groups = (user_perms_via_groups | extended_permissions_qs).distinct()
-
-                kwargs["queryset"] = user_perms_via_groups.select_related("content_type")
+                kwargs["queryset"] = available_perms.select_related("content_type")
             else:
                 kwargs["queryset"] = Permission.objects.all().select_related("content_type")
 

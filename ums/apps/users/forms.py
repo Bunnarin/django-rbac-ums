@@ -1,10 +1,9 @@
 from django import forms
 from django.contrib.auth.models import Group
-from django.db.models import Count, Q, F
-from django.contrib.auth.models import Permission
 from apps.organization.models import Program, Faculty
 from apps.academic.models import Class
 from .models import User, Student
+from .queryset import GroupQuerySet
 
 class UserForm(forms.ModelForm):
     """
@@ -21,14 +20,7 @@ class UserForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Get all groups where the user has all permissions
-        user_group_perms = list(Permission.objects.filter(group__user=user).values_list('id', flat=True))
-        self.fields['groups'].queryset = Group.objects.annotate(
-            total_permissions=Count('permissions'),
-            user_has_permissions=Count(
-                'permissions',
-                filter=Q(permissions__id__in=user_group_perms)
-            )
-        ).filter(total_permissions=F('user_has_permissions'))
+        self.fields['groups'].queryset = GroupQuerySet(Group).for_user(user)
 
         # if the user.is_staff = False, remove is_staff field
         if not user.is_staff:
