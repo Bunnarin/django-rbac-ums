@@ -49,6 +49,11 @@ class StudentImportView(BaseImportView):
 class StudentCreateView(BaseCreateView):
     model = Student
     form_class = StudentForm
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['request'] = self.request
+        return kwargs
 
 class StudentUpdateView(StudentCreateView, BaseUpdateView):
     def get_initial(self):

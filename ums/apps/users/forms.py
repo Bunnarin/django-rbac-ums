@@ -3,6 +3,7 @@ from django.contrib.auth.models import Group
 from django.db.models import Count, Q, F
 from django.contrib.auth.models import Permission
 from apps.organization.models import Program, Faculty
+from apps.academic.models import Class
 from .models import User, Student
 
 class UserForm(forms.ModelForm):
@@ -67,6 +68,10 @@ class StudentForm(forms.ModelForm):
     class Meta:
         model = Student
         fields = ['_class']      
+    
+    def __init__(self, *args, request, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['_class'].queryset = Class.objects.get_queryset(request=request)
 
     def save(self, commit=True):
         data = self.cleaned_data
