@@ -19,7 +19,14 @@ class CustomGroupAdmin(admin.ModelAdmin):
     ordering = ("name",)
     filter_horizontal = ("permissions",)
 
+    def get_change_permissions(self, request):
+        if request.user.is_superuser:
+            return True
+        return False
+        
     def get_delete_permission(self, request):
+        if request.user.is_superuser:
+            return True
         return False
 
     def formfield_for_manytomany(self, db_field, request=None, **kwargs):

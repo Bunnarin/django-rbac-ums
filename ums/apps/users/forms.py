@@ -1,4 +1,7 @@
 from django import forms
+from django.contrib.auth.models import Group
+from django.db.models import Count, Q, F
+from django.contrib.auth.models import Permission
 from apps.organization.models import Program, Faculty
 from .models import User, Student
 
@@ -16,8 +19,16 @@ class UserForm(forms.ModelForm):
         s = request.session
         super().__init__(*args, **kwargs)
 
-        # filter permissions (this mean that the user creator would need to be in all the group first)
-        self.fields['groups'].queryset = user.groups
+        # Get all groups where the user has all permissions
+        user_group_perms = list(Permission.objects.filter(group__user=user).values_list('id', flat=True))
+        self.fields['groups'].queryset = Group.objects.annotate(
+            total_permissions=Count('permissions'),
+            user_has_permissions=Count(
+                'permissions',
+                filter=Q(permissions__id__in=user_group_perms)
+            )
+        ).filter(total_permissions=F('user_has_permissions'))
+
         # if the user.is_staff = False, remove is_staff field
         if not user.is_staff:
             self.fields.pop('is_staff')
@@ -38,11 +49,13 @@ class UserForm(forms.ModelForm):
         # check affiliation integrity
         faculties = data.get('faculties')
         programs = data.get('programs')
-        if faculties and programs:
-            program_faculties = Faculty.objects.filter(programs__in=programs).distinct()
-            missing_faculties = program_faculties.exclude(id__in=[f.id for f in faculties])
-            if missing_faculties.exists():
-                self.add_error('programs', f"The selected programs include faculties that are not in the assigned faculties")
+        if (not faculties and not programs) or (faculties and not programs):
+            return data
+            
+        program_faculties = Faculty.objects.filter(programs__in=programs).distinct()
+        missing_faculties = program_faculties.exclude(id__in=[f.id for f in faculties])
+        if missing_faculties.exists():
+            self.add_error('programs', f"The selected programs include faculties that are not in the assigned faculties")
         
         return data
 
