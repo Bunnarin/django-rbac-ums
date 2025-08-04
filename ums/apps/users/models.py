@@ -85,4 +85,7 @@ class Student(models.Model):
         super().delete(*args, **kwargs)
     
     def get_user_rls_filter(self, user):
-        return Q(user=user)
+        """
+        the class one is teaching or the user is yourself
+        """
+        return Q(user=user) | Q(_class__professor=user)

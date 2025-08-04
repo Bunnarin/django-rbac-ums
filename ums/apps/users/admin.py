@@ -7,15 +7,6 @@ from .models import User
 # Unregister default allauth email admin since we don't need it
 admin.site.unregister(EmailAddress)
 
-# allow only editing in the user admin
-@admin.register(User)
-class UserAdmin(admin.ModelAdmin):
-    fields = ['is_active', 'is_staff']
-    def get_add_permission(self, request):
-        return False
-    def get_delete_permission(self, request):
-        return False
-
 admin.site.unregister(Group)
 @admin.register(Group)
 class CustomGroupAdmin(admin.ModelAdmin):

@@ -155,12 +155,12 @@ class BaseWriteView():
         # inject the faculty and program
         s = self.request.session
         
-        if s['selected_faculty'] == "None": 
+        if not s.get('selected_faculty') or s.get('selected_faculty') == "None": 
             form.instance.faculty = None
         else: 
             form.instance.faculty = Faculty.objects.get(pk=s['selected_faculty'])
 
-        if s['selected_program'] == "None": 
+        if not s.get('selected_program') or s.get('selected_program') == "None": 
             form.instance.program = None
         else: 
             form.instance.program = Program.objects.get(pk=s['selected_program'])
@@ -293,10 +293,7 @@ def set_faculty(request):
     """    
     faculty_id = request.POST.get('faculty_id')
     s = request.session
-    if faculty_id == "":
-        s['selected_faculty'] = "None"
-        s['selected_program'] = "None"
-    else:
+    try:
         faculty_id = int(faculty_id)
         user = request.user
         authorized = 'access_global' in s['permissions']
@@ -310,6 +307,9 @@ def set_faculty(request):
         else:
             new_program = user.programs.filter(faculty=faculty_id).first()
         s['selected_program'] = new_program.id
+    except:
+        s['selected_faculty'] = "None"
+        s['selected_program'] = "None"
 
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
@@ -320,15 +320,15 @@ def set_program(request):
     """
     program_id = request.POST.get('program_id')
     s = request.session
-    if program_id == "":
-        s['selected_program'] = "None"
-    else:
+    try:
         program_id = int(program_id)
         user = request.user
         authorized = 'access_global' in s['permissions'] or 'access_faculty_wide' in s['permissions']
         if not authorized and program_id not in user.programs.values_list('id', flat=True):
             return JsonResponse({'error': 'Unauthorized program'}, status=403)
         s['selected_program'] = program_id
+    except:
+        s['selected_program'] = "None"
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @require_POST
@@ -338,14 +338,14 @@ def set_group(request):
     """
     group_id = request.POST.get('group_id')
     s = request.session
-    if group_id == "":
-        s['selected_group'] = "None"
-        s['permissions'] = []
-    else:
+    try:
         group_id = int(group_id)
         user = request.user
         if group_id not in user.groups.values_list('id', flat=True):
             return JsonResponse({'error': 'Unauthorized group'}, status=403)
         s['selected_group'] = group_id
         s['permissions'] = list(Group.objects.get(id=group_id).permissions.all().values_list('codename', flat=True))
+    except:
+        s['selected_group'] = "None"
+        s['permissions'] = []
     return redirect(request.META.get('HTTP_REFERER', '/'))

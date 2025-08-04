@@ -10,6 +10,9 @@ def organization_data(request):
     user = request.user
     if not user.is_authenticated:
         return context
+    
+    # init
+    s['permissions'] = s.get('permissions', [])
 
     # group
     context['all_groups'] = user.groups.all()
@@ -17,8 +20,6 @@ def organization_data(request):
     if user.groups.exists() and not s.get('selected_group'):
         s['selected_group'] = user.groups.first().id
         s['permissions'] = list(Group.objects.get(id=s['selected_group']).permissions.all().values_list('codename', flat=True))
-    
-    s['permissions'] = s.get('permissions', [])
 
     # affiliation
     user_faculties = user.faculties.all()

@@ -9,7 +9,7 @@ class UserForm(forms.ModelForm):
     """
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'email', 'faculties', 'programs', 'groups']
+        fields = ['first_name', 'last_name', 'email', 'faculties', 'programs', 'groups', 'is_staff']
     
     def __init__(self, *args, request, **kwargs):
         user = request.user
@@ -18,6 +18,9 @@ class UserForm(forms.ModelForm):
 
         # filter permissions (this mean that the user creator would need to be in all the group first)
         self.fields['groups'].queryset = user.groups
+        # if the user.is_staff = False, remove is_staff field
+        if not user.is_staff:
+            self.fields.pop('is_staff')
 
         # filter affiliations
         if 'access_global' in s['permissions']:
@@ -25,7 +28,7 @@ class UserForm(forms.ModelForm):
             pass
         elif 'access_faculty_wide' in s['permissions']:
             self.fields['faculties'].queryset = user.faculties
-            self.fields['programs'].queryset = Program.objects.filter(faculty__in=user.faculties)
+            self.fields['programs'].queryset = Program.objects.filter(faculty__in=user.faculties.all())
         else:
             self.fields['faculties'].queryset = user.faculties
             self.fields['programs'].queryset = user.programs
