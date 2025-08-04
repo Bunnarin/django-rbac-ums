@@ -32,7 +32,7 @@ class CustomGroupAdmin(admin.ModelAdmin):
                     extended_permissions_qs = Permission.objects.filter(
                         Q(codename="access_faculty_wide") |
                         Q(codename="access_program_wide")
-                    ).distinct()
+                    )
                     available_perms = (available_perms | extended_permissions_qs).distinct()
 
                 kwargs["queryset"] = available_perms.select_related("content_type")

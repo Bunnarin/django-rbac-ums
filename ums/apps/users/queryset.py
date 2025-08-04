@@ -7,6 +7,9 @@ class GroupQuerySet(models.QuerySet):
         """
         Returns groups where all permissions are a subset of the user's group permissions.
         """
+        if user.is_superuser:
+            return self
+            
         user_group_perm_ids = set(Permission.objects.filter(group__user=user).values_list('id', flat=True))
         
         return self.annotate(
