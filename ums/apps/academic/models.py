@@ -63,7 +63,7 @@ class Schedule(models.Model):
 class Score(models.Model):
     student = models.ForeignKey(Student, on_delete=models.PROTECT)
     course = models.ForeignKey(Course, on_delete=models.PROTECT)
-    score = models.IntegerField()
+    score = models.IntegerField(default=0)
 
     objects = BulkUpdateOrCreateQuerySet.as_manager()
 

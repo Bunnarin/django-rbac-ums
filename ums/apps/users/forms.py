@@ -67,9 +67,13 @@ class StudentForm(forms.ModelForm):
 
     def save(self, commit=True):
         data = self.cleaned_data
-        user = User.objects.create(
-            first_name=data['first_name'], last_name=data['last_name'], email=data['email']
-            )
+        user, _ = User.objects.get_or_create(
+            first_name=data['first_name'],
+            last_name=data['last_name'],
+            email=data['email'],
+        )
+        user.save()
+
         student = super().save(commit=False)
         student.user = user
         if commit:

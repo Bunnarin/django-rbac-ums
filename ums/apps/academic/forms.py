@@ -1,13 +1,17 @@
 from django import forms
-from apps.academic.models import Score, Schedule, Course
+from django.db import transaction
 from apps.users.models import User
+from .models import Score, Schedule, Course
 
-def create_score_form_class(students, existing_scores):
-    class ScoreBulkCreateForm(forms.ModelForm):
-        class Meta:
-            model = Score
-            fields = []  # We'll add fields dynamically
+def create_score_form_class(schedule_pk):
+    schedule = Schedule.objects.select_related('course', '_class').get(pk=schedule_pk)
+    students = schedule._class.students.all()
+    existing_scores = {
+        score.student_id: score.score 
+        for score in Score.objects.filter(student__in=students, course=schedule.course)
+    }
 
+    class ScoreBulkCreateForm(forms.Form):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             for student in students:
@@ -15,8 +19,32 @@ def create_score_form_class(students, existing_scores):
                     label=student,
                     min_value=0,
                     max_value=100,
-                    initial=existing_scores.get(student.id).score,
+                    initial=existing_scores.get(student.id, 0),
                 )
+        
+        @transaction.atomic
+        def save(self):
+            data = self.cleaned_data
+            score_objects = []
+            for student in students:
+                score_value = data.get(f'score_{student.id}')
+                # Only process if score is different from inital value
+                if score_value == existing_scores.get(student.id):
+                    continue
+                score_objects.append(
+                    Score(
+                        student=student,
+                        course=schedule.course,
+                        score=score_value
+                    )
+                )            
+            if score_objects:
+                Score.objects.bulk_update_or_create(
+                    score_objects,
+                    ['score'],  # Fields to update
+                    match_field='student'  # Field to match on for updates
+                )
+
     return ScoreBulkCreateForm
     
 class ScheduleForm(forms.ModelForm):

@@ -23,6 +23,7 @@ services:
  django_gunicorn:
    build: ./
    volumes:
+     - ./:/app
      - ./static:/app/static
      - ./media:/app/media
    env_file:

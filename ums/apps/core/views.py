@@ -4,7 +4,7 @@ from django.urls import reverse_lazy
 from django.db import transaction
 from django.http import JsonResponse
 from django.core.exceptions import PermissionDenied
-from django.views.generic import View, ListView, DeleteView, CreateView, UpdateView
+from django.views.generic import View, ListView, DeleteView, CreateView, UpdateView, FormView
 from django.contrib.auth.models import Group
 from django.views.decorators.http import require_POST
 from django.forms.models import modelform_factory
@@ -89,7 +89,7 @@ class BaseListView(ListView):
         
         return queryset
 
-class BaseWriteView():
+class BaseWriteView(FormView):
     """
     Mixin for views that require permission to add or update an object.
     """
@@ -114,9 +114,9 @@ class BaseWriteView():
             return self.success_url
         return reverse_lazy(f'{self.app_label}:view_{self.model_name}')
     
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['cancel_url'] = reverse_lazy(f'{self.app_label}:view_{self.model_name}')
+    def get_context_data(self):
+        context = super().get_context_data()
+        context['cancel_url'] = self.get_success_url()
         return context
     
     def get_queryset(self):
@@ -226,13 +226,13 @@ class BaseImportView(BaseCreateView):
         form = form_class(request_post or None, request=self.request)
         for field in form.fields:
             form.fields[field].required = False
-            try: field_instance = self.model._meta.get_field(field)
+            try: 
+                field_instance = self.model._meta.get_field(field)
+                is_relation = field_instance.is_relation
             except: 
-                if not isinstance(form.fields[field], forms.BooleanField):
-                    form.fields[field].widget = forms.Textarea()
-                continue
-            if not field_instance.is_relation and not isinstance(form.fields[field], forms.BooleanField):
-                form.fields[field].widget = forms.Textarea()
+                is_relation = False
+            if not is_relation and not isinstance(form.fields[field], forms.BooleanField):
+                form.fields[field] = forms.CharField(widget=forms.Textarea())
         return form
     
     def get(self, request, *args, **kwargs):
@@ -283,7 +283,8 @@ class BaseImportView(BaseCreateView):
                     instance.clean()
                     instances.append(instance)
                 self.model.objects.bulk_create(instances)   
-            return render(request, self.template_name, {'formset': formset})
+            else:
+                return render(request, self.template_name, {'formset': formset})
         return redirect(f'{self.app_label}:view_{self.model_name}')
 
 @require_POST
